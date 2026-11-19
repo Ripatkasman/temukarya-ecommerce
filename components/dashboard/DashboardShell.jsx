@@ -55,7 +55,12 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  useEffect(() => setOpen(false), [pathname]);
+  // Tutup menu seluler saat pindah halaman (menyesuaikan state saat render, bukan di effect).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setOpen(false);
+  }
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && setOpen(false);
