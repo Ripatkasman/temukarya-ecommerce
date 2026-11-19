@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X, LayoutDashboard } from "lucide-react";
+import { Menu, X, LayoutDashboard, ShoppingCart } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -18,7 +18,7 @@ const PUBLIC_LINKS = [
  * `user` (opsional): { fullname, dashboardHref }. Jika ada, tampilkan tautan dashboard
  * dan `logoutSlot` (mis. form dengan Server Action logout) menggantikan tombol Masuk/Daftar.
  */
-export default function Navbar({ user = null, logoutSlot = null, className }) {
+export default function Navbar({ user = null, logoutSlot = null, cartCount = null, className }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -37,6 +37,12 @@ export default function Navbar({ user = null, logoutSlot = null, className }) {
         <div className="hidden items-center gap-2 md:flex">
           {user ? (
             <>
+              {cartCount !== null && (
+                <Link href="/buyer/cart" aria-label={`Keranjang, ${cartCount} barang`} className="relative flex size-11 items-center justify-center rounded-btn hover:bg-cream">
+                  <ShoppingCart className="size-5" aria-hidden="true" />
+                  {cartCount > 0 && <span aria-hidden="true" className="absolute right-0.5 top-0.5 flex min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[0.6875rem] font-bold text-charcoal">{cartCount}</span>}
+                </Link>
+              )}
               <Button href={user.dashboardHref} variant="secondary" size="sm">
                 <LayoutDashboard className="size-4" aria-hidden="true" />
                 Dashboard
@@ -74,6 +80,7 @@ export default function Navbar({ user = null, logoutSlot = null, className }) {
             <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
               {user ? (
                 <>
+                  {cartCount !== null && <Button href="/buyer/cart" variant="outline">Keranjang ({cartCount})</Button>}
                   <Button href={user.dashboardHref} variant="secondary">Dashboard</Button>
                   {logoutSlot}
                 </>
