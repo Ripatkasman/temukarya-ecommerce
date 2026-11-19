@@ -53,7 +53,10 @@ app/                 halaman dan layout (App Router)
   (public)/          beranda, /products, /products/[id], /stores/[id], /about
   (auth)/            /login, /register
   seller/pending     status seller pending/ditolak (+ hapus akun)
-  admin, seller, buyer  placeholder dashboard (diganti di Fase 4)
+  admin/            ringkasan, pengguna, verifikasi seller, produk, kategori
+  seller/(dashboard) ringkasan, toko, produk (CRUD + upload gambar), pesanan masuk
+  buyer/            ringkasan, profil, keranjang + checkout, riwayat & detail pesanan, ulasan
+  uploads/[name]    route yang menyajikan gambar unggahan dari folder uploads/
 components/
   brand/             BrandLogo (logo sementara)
   ui/                Button, Input, PasswordInput, Textarea, Select, Checkbox, Badge,
@@ -66,7 +69,8 @@ components/
 lib/                 cn.js, format.js, db.js (pool pg), session.js (cookie bertanda tangan),
                      auth.js (guard role), validation.js
   repositories/      SQL mentah per domain (users, catalog, cart)
-  actions/           Server Actions (auth, cart)
+  actions/           Server Actions (auth, cart, admin, seller, buyer)
+  uploads.js         validasi (magic bytes, 2 MB) dan penyimpanan gambar ke folder uploads/
 database/            schema.sql, seed.sql
 public/brand/        logo-mark.svg (sementara)
 public/uploads/      gambar unggahan (Fase 5)
@@ -86,16 +90,23 @@ Catatan kontras (hasil pengecekan WCAG):
 
 - Logo: `public/brand/logo-mark.svg` dan `components/brand/BrandLogo.jsx` (logo sementara buatan sendiri).
 - `app/design-system` otomatis 404 pada build production; boleh dihapus sebelum pengumpulan.
-- `app/admin|seller|buyer/page.jsx` dan `components/dashboard/RolePlaceholder.jsx` hanya penanda sementara; ganti dengan dashboard asli di Fase 4.
+
+## Keputusan desain penting (Fase 4)
+
+- **Checkout atomik:** satu transaksi PostgreSQL. Stok dikurangi dengan `UPDATE ... WHERE stock >= jumlah`, sehingga dua pembeli yang berebut stok terakhir tidak bisa sama-sama berhasil. Gagal di langkah mana pun berarti rollback total dan keranjang tidak dikosongkan.
+- **Pesanan multi-toko:** satu `orders` (induk) berisi beberapa `store_orders` (satu per toko). Status induk **tidak disimpan**, melainkan diturunkan dari sub-order (lihat `deriveOrderStatus` di `lib/repositories/buyer.js`). Seller hanya melihat dan mengubah sub-order miliknya.
+- **Alur status oleh seller:** Menunggu Pembayaran → Diproses → Dikirim → Selesai; Dibatalkan hanya dari Menunggu Pembayaran atau Diproses dan mengembalikan stok. Pembayaran hanya simulasi: "Proses pesanan" berarti seller menganggap pembayaran sudah diterima.
+- **Ulasan:** hanya untuk item dari sub-order berstatus Selesai milik pembeli itu sendiri. `product_id` dan `buyer_id` diturunkan di SQL, bukan dari form.
+- **Admin:** boleh mengubah nama/email/telepon, tetapi tidak role atau status seller. Tidak bisa menghapus akun sendiri. Menghapus produk memang menghapus permanen (sesuai tugas); riwayat pesanan tetap aman karena item pesanan menyimpan nama dan harga saat pembelian.
+- **Upload gambar:** disimpan di folder `uploads/` (di luar `public/`) dan disajikan oleh `app/uploads/[name]/route.js`, karena file yang ditambahkan ke `public/` setelah build tidak disajikan oleh `next start`. Tipe file dicek dari isi file (JPG/PNG/WebP), maksimal 2 MB.
 
 ## Batasan yang diketahui
 
-- Tombol Tambah ke Keranjang sudah menyimpan ke database, tetapi halaman keranjang dan checkout baru dibuat di Fase 4/5.
 - Satu produk hanya punya satu gambar (sesuai skema), jadi "galeri" di halaman detail berisi satu gambar.
 - Gambar produk di seed adalah placeholder lokal berwarna per kategori, bukan foto asli.
-- Bagian "rekomendasi acak" di beranda buyer belum ada; yang tampil: produk terbaru dan paling banyak diulas.
+- Bagian "rekomendasi acak" di beranda pembeli belum ada; yang tampil: produk terbaru dan paling banyak diulas.
+- Wishlist dan manajemen alamat pengiriman (opsional) belum dibuat; alamat diisi saat checkout.
 - Belum ada pembatasan percobaan login (rate limiting).
-- Setelah form gagal divalidasi, kolom kata sandi dikosongkan (perilaku bawaan form React) dan perlu diisi ulang.
-- Tabel di dashboard scroll horizontal di layar kecil; tampilan kartu untuk mobile bisa ditambahkan di Fase 4 jika perlu.
-- Gambar unggahan runtime di `public/uploads` perlu diuji pada `next start` di Fase 5.
+- Setelah form registrasi/login gagal divalidasi, kolom kata sandi dikosongkan (perilaku bawaan form React). Form di dashboard tidak dikosongkan.
+- File gambar lama yang tidak terpakai dihapus saat diganti/dihapus, tetapi tidak ada pembersihan terjadwal untuk file yatim akibat kegagalan di tengah proses.
 - Pembayaran hanya simulasi (tanpa payment gateway).
