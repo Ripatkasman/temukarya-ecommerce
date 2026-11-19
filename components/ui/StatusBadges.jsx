@@ -1,4 +1,4 @@
-import { Clock, PackageCheck, Truck, CheckCircle2, XCircle, Hourglass, ShieldCheck, ShieldX } from "lucide-react";
+import { Shield, Store, ShoppingBag, Clock, PackageCheck, Truck, CheckCircle2, XCircle, Hourglass, ShieldCheck, ShieldX } from "lucide-react";
 import Badge from "./Badge";
 
 const ORDER = {
@@ -23,4 +23,15 @@ export function OrderStatusBadge({ status }) {
 export function SellerStatusBadge({ status }) {
   const s = SELLER[status] ?? { label: status, tone: "neutral" };
   return <Badge tone={s.tone} icon={s.icon}>{s.label}</Badge>;
+}
+
+const ROLE = {
+  admin: { label: "Admin", tone: "brand", icon: Shield },
+  seller: { label: "Penjual", tone: "accent", icon: Store },
+  buyer: { label: "Pembeli", tone: "neutral", icon: ShoppingBag },
+};
+
+export function RoleBadge({ role }) {
+  const r = ROLE[role] ?? { label: role, tone: "neutral" };
+  return <Badge tone={r.tone} icon={r.icon}>{r.label}</Badge>;
 }
