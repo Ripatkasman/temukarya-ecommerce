@@ -7,4 +7,3 @@ out
 .DS_Store
 public/uploads/*
 !public/uploads/.gitkeep
-agent.md
