@@ -23,6 +23,7 @@ DROP TABLE    IF EXISTS users          CASCADE;
 DROP FUNCTION IF EXISTS set_updated_at()               CASCADE;
 DROP FUNCTION IF EXISTS enforce_store_order_transition() CASCADE;
 DROP FUNCTION IF EXISTS enforce_review_eligibility()   CASCADE;
+DROP FUNCTION IF EXISTS enforce_user_integrity()       CASCADE;
 
 -- ---------- Fungsi umum ----------
 CREATE FUNCTION set_updated_at() RETURNS trigger AS $$
@@ -68,6 +69,27 @@ CREATE UNIQUE INDEX uq_users_email_lower ON users (LOWER(email));
 CREATE INDEX idx_users_role_status ON users (role, seller_status);
 CREATE TRIGGER trg_users_updated BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Pengaman di level database (selain pengecekan di aplikasi):
+--   * role tidak boleh berubah setelah akun dibuat (mencegah "naik jabatan" menjadi admin),
+--   * seller_status hanya boleh pending -> approved atau pending -> rejected.
+-- Seed boleh mengisi status langsung saat INSERT; trigger ini hanya berlaku untuk UPDATE.
+CREATE FUNCTION enforce_user_integrity() RETURNS trigger AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    RAISE EXCEPTION 'Role pengguna tidak boleh diubah (% -> %)', OLD.role, NEW.role
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.seller_status IS DISTINCT FROM OLD.seller_status
+     AND NOT (OLD.seller_status = 'pending' AND NEW.seller_status IN ('approved', 'rejected')) THEN
+    RAISE EXCEPTION 'Transisi status seller tidak diizinkan (% -> %)', OLD.seller_status, NEW.seller_status
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_users_integrity BEFORE UPDATE OF role, seller_status ON users
+  FOR EACH ROW EXECUTE FUNCTION enforce_user_integrity();
 
 -- =====================================================================
 -- 2. stores (satu seller = satu toko)
