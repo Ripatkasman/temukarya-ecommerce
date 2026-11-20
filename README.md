@@ -133,6 +133,21 @@ curl -b jar.txt -H "Content-Type: application/json" \
   -d '{"productId":"1","quantity":2}' http://localhost:3000/api/cart
 ```
 
+## Keamanan dan integritas data (Fase 5)
+
+| Lapisan | Perlindungan |
+|---|---|
+| Autentikasi | Password di-hash bcrypt. Sesi = cookie `httpOnly`, `SameSite=Lax`, bertanda tangan HMAC. Role dan status seller dibaca ulang dari database di setiap request. Perbandingan password tetap dijalankan (hash tiruan) saat email tidak ada agar waktu respons tidak membocorkan email terdaftar. |
+| Pembatas login | 5 kegagalan per kombinasi IP + email dalam 15 menit menghasilkan HTTP 429; login berhasil mereset hitungan. Disimpan di memori server. |
+| Proxy (`proxy.js`) | Pengganti "middleware" di Next.js 16. Request ke `/admin`, `/seller`, `/buyer` tanpa cookie sesi langsung dialihkan ke `/login?next=`. Hanya penjagaan awal; otorisasi sebenarnya tetap di server. |
+| Otorisasi server | `requireRole()` (Server Action dan halaman) serta `route({ roles })` (Route Handler). Seller hanya lolos jika `approved`. Semua query baca/ubah/hapus dibatasi pemilik (`WHERE seller_id = $sesi` atau `buyer_id = $sesi`). Kepemilikan yang salah dijawab 404, bukan 403, agar keberadaan data orang lain tidak bocor. |
+| Database | `CHECK` (harga > 0, stok >= 0, jumlah >= 1, rating 1-5), `UNIQUE`, FK dengan aturan hapus yang terdokumentasi, serta trigger: transisi status sub-order, kelayakan ulasan, dan (baru) **role tidak bisa diubah** dan **status seller hanya `pending` -> `approved`/`rejected`**. |
+| Header HTTP | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` (di `next.config.mjs`). |
+| Upload | Tipe dari isi file (JPG/PNG/WebP, bukan SVG), maksimal 2 MB, nama acak, disajikan dengan `nosniff`. |
+| SQL | Selalu berparameter. `ORDER BY` hanya dari daftar yang diizinkan, `LIKE` di-escape. |
+
+**Aturan hapus pengguna (Admin):** pengguna yang masih punya pesanan **berjalan** (menunggu pembayaran, diproses, atau dikirim), baik sebagai pembeli maupun penjual, tidak bisa dihapus (HTTP 409). Setelah pesanan selesai atau dibatalkan, pengguna boleh dihapus dan riwayat order tetap tersimpan lengkap dengan nama dan harga saat pembelian (`buyer_id`/`seller_id` menjadi NULL).
+
 ## Keputusan desain penting (Fase 4)
 
 - **Checkout atomik:** satu transaksi PostgreSQL. Stok dikurangi dengan `UPDATE ... WHERE stock >= jumlah`, sehingga dua pembeli yang berebut stok terakhir tidak bisa sama-sama berhasil. Gagal di langkah mana pun berarti rollback total dan keranjang tidak dikosongkan.
@@ -147,7 +162,9 @@ curl -b jar.txt -H "Content-Type: application/json" \
 - Satu produk hanya punya satu gambar (sesuai skema), jadi "galeri" di halaman detail berisi satu gambar.
 - Gambar produk di seed adalah placeholder lokal berwarna per kategori, bukan foto asli.
 - Wishlist dan manajemen alamat pengiriman (opsional) belum dibuat; alamat diisi saat checkout.
-- Belum ada pembatasan percobaan login (rate limiting).
+- Pembatas login disimpan di memori server: hitungan hilang saat restart dan tidak dibagi antar instance. Untuk produksi multi-instance, pindahkan ke penyimpanan bersama.
+- Sesi berupa cookie bertanda tangan tanpa daftar sesi di server: logout menghapus cookie di browser, tetapi cookie yang sudah dicuri tetap berlaku sampai kedaluwarsa (7 hari). Mengganti kata sandi tidak mengakhiri sesi di perangkat lain.
+- Admin belum bisa mengubah informasi toko (hanya moderasi produk). Buyer belum bisa membatalkan pesanan sendiri; pembatalan dilakukan penjual.
 - Setelah form registrasi/login gagal divalidasi, kolom kata sandi dikosongkan (perilaku bawaan form React). Form di dashboard tidak dikosongkan.
 - File gambar lama yang tidak terpakai dihapus saat diganti/dihapus, tetapi tidak ada pembersihan terjadwal untuk file yatim akibat kegagalan di tengah proses.
 - Pembayaran hanya simulasi (tanpa payment gateway).
