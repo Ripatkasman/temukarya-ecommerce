@@ -41,9 +41,10 @@ export default async function HomePage() {
   const viewer = await getCurrentUser();
   const isBuyer = viewer?.role === "buyer";
 
-  const [popular, newest, categories, stores] = await Promise.all([
+  const [popular, newest, recommended, categories, stores] = await Promise.all([
     listHomeProducts({ sort: "popular", limit: 8 }),
     isBuyer ? listHomeProducts({ sort: "newest", limit: 8 }) : Promise.resolve([]),
+    isBuyer ? listHomeProducts({ sort: "random", limit: 8 }) : Promise.resolve([]),
     listCategories({ popularFirst: true, limit: 6, onlyWithProducts: true }),
     listRecommendedStores(3),
   ]);
@@ -96,6 +97,13 @@ export default async function HomePage() {
       </section>
 
       {/* Produk */}
+      {isBuyer && recommended.length > 0 && (
+        <section aria-labelledby="rekomendasi" className="container-page pt-12 md:pt-16">
+          <SectionHeader id="rekomendasi" title="Rekomendasi produk" description="Dipilih acak dari katalog. Muat ulang halaman untuk melihat pilihan lain." href="/products" />
+          <ProductGrid products={recommended} renderActions={renderActions} />
+        </section>
+      )}
+
       {isBuyer && newest.length > 0 && (
         <section aria-labelledby="produk-baru" className="container-page pt-12 md:pt-16">
           <SectionHeader id="produk-baru" title="Baru di TemuKarya" description="Karya yang baru saja ditambahkan penjual." href="/products?sort=newest" />

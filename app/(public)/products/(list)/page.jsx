@@ -3,33 +3,15 @@ import ProductFilters from "@/components/commerce/ProductFilters";
 import AddToCart from "@/components/commerce/AddToCart";
 import Pagination from "@/components/ui/Pagination";
 import { getCurrentUser } from "@/lib/auth";
-import { parseId } from "@/lib/validation";
+import { parseProductFilters } from "@/lib/query";
 import { listProducts, listCategories, SORT_OPTIONS } from "@/lib/repositories/catalog";
 
 export const metadata = { title: "Jelajahi Produk" };
 export const dynamic = "force-dynamic";
 
-const MAX_PRICE = 9_999_999_999;
-const first = (v) => (Array.isArray(v) ? v[0] : v);
-
-/** Angka rupiah dari query string: bilangan bulat 0..MAX_PRICE, selain itu diabaikan. */
-function parsePrice(v) {
-  const s = first(v);
-  if (typeof s !== "string" || !/^\d{1,10}$/.test(s)) return null;
-  const n = Number(s);
-  return n <= MAX_PRICE ? n : null;
-}
-
 export default async function ProductsPage({ searchParams }) {
   const sp = await searchParams;
-  const q = (typeof first(sp.q) === "string" ? first(sp.q).trim() : "").slice(0, 100);
-  const categoryId = parseId(first(sp.category));
-  const minPrice = parsePrice(sp.min);
-  const maxPrice = parsePrice(sp.max);
-  const sortRaw = first(sp.sort);
-  const sort = SORT_OPTIONS.some((o) => o.value === sortRaw) ? sortRaw : "newest";
-  const pageRaw = Number(first(sp.page));
-  const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  const { q, categoryId, minPrice, maxPrice, sort, page } = parseProductFilters(sp, SORT_OPTIONS.map((o) => o.value));
 
   const [viewer, categories, result] = await Promise.all([
     getCurrentUser(),

@@ -56,6 +56,7 @@ app/                 halaman dan layout (App Router)
   admin/            ringkasan, pengguna, verifikasi seller, produk, kategori
   seller/(dashboard) ringkasan, toko, produk (CRUD + upload gambar), pesanan masuk
   buyer/            ringkasan, profil, keranjang + checkout, riwayat & detail pesanan, ulasan
+  api/              Route Handler REST (lihat bagian API di bawah)
   uploads/[name]    route yang menyajikan gambar unggahan dari folder uploads/
 components/
   brand/             BrandLogo (logo sementara)
@@ -69,7 +70,9 @@ components/
 lib/                 cn.js, format.js, db.js (pool pg), session.js (cookie bertanda tangan),
                      auth.js (guard role), validation.js
   repositories/      SQL mentah per domain (users, catalog, cart)
-  actions/           Server Actions (auth, cart, admin, seller, buyer)
+  services/          logika bisnis + validasi per peran (dipakai bersama oleh actions dan API)
+  actions/           Server Actions (adapter tipis di atas services)
+  api.js             pembungkus Route Handler (cek origin, sesi+role, body JSON/multipart, bentuk respons)
   uploads.js         validasi (magic bytes, 2 MB) dan penyimpanan gambar ke folder uploads/
 database/            schema.sql, seed.sql
 public/brand/        logo-mark.svg (sementara)
@@ -91,6 +94,45 @@ Catatan kontras (hasil pengecekan WCAG):
 - Logo: `public/brand/logo-mark.svg` dan `components/brand/BrandLogo.jsx` (logo sementara buatan sendiri).
 - `app/design-system` otomatis 404 pada build production; boleh dihapus sebelum pengumpulan.
 
+## API (Route Handler)
+
+Aplikasi punya **dua jalur akses yang memakai logika yang sama**: Server Action (dipakai form di UI) dan Route Handler REST di `app/api/**`. Keduanya adalah adapter tipis di atas `lib/services/*` (validasi + aturan bisnis) dan `lib/repositories/*` (raw SQL), sehingga aturan tidak ditulis dua kali.
+
+Autentikasi: cookie sesi `tk_session` (httpOnly, SameSite=Lax) dari `POST /api/auth/login`. Body berupa JSON, atau `multipart/form-data` untuk endpoint dengan gambar. Respons selalu `{ ok, message?, data?, errors? }` dengan kode status: 200/201 sukses, 401 belum login, 403 role salah / seller belum disetujui, 404 tidak ada atau bukan milik Anda, 409 konflik (duplikat, stok, transisi status), 415 tipe body salah, 422 validasi per field, 500 kesalahan server. Request pengubah data dengan header `Origin` dari host lain ditolak (403).
+
+| Metode dan path | Akses | Fungsi |
+|---|---|---|
+| POST `/api/auth/login`, `/register`, `/logout` | publik | masuk, daftar (buyer/seller), keluar |
+| GET `/api/auth/me` | login | user saat ini |
+| DELETE `/api/auth/account` | seller ditolak | hapus akun sendiri |
+| GET `/api/products` | publik | daftar: `q`, `category`, `min`, `max`, `sort`, `page` |
+| GET `/api/products/:id` | publik | detail + ulasan |
+| POST `/api/products` | seller | tambah produk (multipart, gambar wajib) |
+| PATCH `/api/products/:id` | seller pemilik | ubah produk |
+| DELETE `/api/products/:id` | seller pemilik / admin | hapus produk (admin: moderasi) |
+| GET `/api/categories` | publik | daftar kategori |
+| POST, PATCH, DELETE `/api/categories[/:id]` | admin | CRUD kategori (409 jika dipakai produk) |
+| GET, POST `/api/cart` | buyer | lihat / tambah ke keranjang |
+| PATCH, DELETE `/api/cart/items/:id` | buyer pemilik | ubah jumlah / hapus item |
+| GET, POST `/api/orders` | buyer | riwayat / checkout atomik |
+| GET `/api/orders/:id` | buyer pemilik | detail + pelacakan |
+| POST `/api/order-items/:id/review` | buyer pemilik | ulasan (hanya sub-order Selesai) |
+| GET, PATCH `/api/profile`, PATCH `/api/profile/password` | buyer | profil dan kata sandi |
+| GET, PATCH `/api/seller/store` | seller | informasi toko (+ gambar) |
+| GET `/api/seller/orders` | seller | pesanan masuk (hanya item tokonya) |
+| PATCH `/api/seller/orders/:id/status` | seller pemilik | ubah status sub-order |
+| GET `/api/admin/users`, PATCH/DELETE `/api/admin/users/:id` | admin | kelola pengguna |
+| GET `/api/admin/sellers`, POST `/api/admin/sellers/:id/decision` | admin | verifikasi seller (`approve`/`reject`) |
+
+Contoh (curl, simpan cookie dengan `-c`/`-b`):
+
+```bash
+curl -c jar.txt -H "Content-Type: application/json" \
+  -d '{"email":"buyer@temukarya.id","password":"Buyer123!"}' http://localhost:3000/api/auth/login
+curl -b jar.txt -H "Content-Type: application/json" \
+  -d '{"productId":"1","quantity":2}' http://localhost:3000/api/cart
+```
+
 ## Keputusan desain penting (Fase 4)
 
 - **Checkout atomik:** satu transaksi PostgreSQL. Stok dikurangi dengan `UPDATE ... WHERE stock >= jumlah`, sehingga dua pembeli yang berebut stok terakhir tidak bisa sama-sama berhasil. Gagal di langkah mana pun berarti rollback total dan keranjang tidak dikosongkan.
@@ -104,7 +146,6 @@ Catatan kontras (hasil pengecekan WCAG):
 
 - Satu produk hanya punya satu gambar (sesuai skema), jadi "galeri" di halaman detail berisi satu gambar.
 - Gambar produk di seed adalah placeholder lokal berwarna per kategori, bukan foto asli.
-- Bagian "rekomendasi acak" di beranda pembeli belum ada; yang tampil: produk terbaru dan paling banyak diulas.
 - Wishlist dan manajemen alamat pengiriman (opsional) belum dibuat; alamat diisi saat checkout.
 - Belum ada pembatasan percobaan login (rate limiting).
 - Setelah form registrasi/login gagal divalidasi, kolom kata sandi dikosongkan (perilaku bawaan form React). Form di dashboard tidak dikosongkan.
