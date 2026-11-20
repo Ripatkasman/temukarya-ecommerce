@@ -15,7 +15,7 @@ Spesifikasi lengkap ada di `AGENT.md`.
 | 3 | Halaman publik dan autentikasi | **Selesai** (sudah memakai database sungguhan) |
 | 4 | Dashboard Buyer/Seller/Admin | Belum |
 | 5 | Backend, database, checkout, ulasan | Belum |
-| 6 | Fitur opsional | Belum |
+| 6 | Fitur opsional (wishlist, alamat pengiriman, filter dan pencarian lanjutan) | **Selesai** |
 | 7 | Pengujian dan dokumentasi akhir | Belum |
 
 ## Menjalankan
@@ -55,7 +55,7 @@ app/                 halaman dan layout (App Router)
   seller/pending     status seller pending/ditolak (+ hapus akun)
   admin/            ringkasan, pengguna, verifikasi seller, produk, kategori
   seller/(dashboard) ringkasan, toko, produk (CRUD + upload gambar), pesanan masuk
-  buyer/            ringkasan, profil, keranjang + checkout, riwayat & detail pesanan, ulasan
+  buyer/            ringkasan, profil, alamat, favorit, keranjang + checkout, riwayat & detail pesanan, ulasan
   api/              Route Handler REST (lihat bagian API di bawah)
   uploads/[name]    route yang menyajikan gambar unggahan dari folder uploads/
 components/
@@ -105,7 +105,7 @@ Autentikasi: cookie sesi `tk_session` (httpOnly, SameSite=Lax) dari `POST /api/a
 | POST `/api/auth/login`, `/register`, `/logout` | publik | masuk, daftar (buyer/seller), keluar |
 | GET `/api/auth/me` | login | user saat ini |
 | DELETE `/api/auth/account` | seller ditolak | hapus akun sendiri |
-| GET `/api/products` | publik | daftar: `q`, `category`, `min`, `max`, `sort`, `page` |
+| GET `/api/products` | publik | daftar: `q` (nama produk, toko, atau kategori), `category`, `min`, `max`, `rating` (3 atau 4), `stok=1`, `sort` (newest, popular, rating, price_asc, price_desc), `page` |
 | GET `/api/products/:id` | publik | detail + ulasan |
 | POST `/api/products` | seller | tambah produk (multipart, gambar wajib) |
 | PATCH `/api/products/:id` | seller pemilik | ubah produk |
@@ -118,6 +118,8 @@ Autentikasi: cookie sesi `tk_session` (httpOnly, SameSite=Lax) dari `POST /api/a
 | GET `/api/orders/:id` | buyer pemilik | detail + pelacakan |
 | POST `/api/order-items/:id/review` | buyer pemilik | ulasan (hanya sub-order Selesai) |
 | GET, PATCH `/api/profile`, PATCH `/api/profile/password` | buyer | profil dan kata sandi |
+| GET, POST `/api/wishlist`, DELETE `/api/wishlist/:productId` | buyer | daftar favorit (terpisah dari keranjang) |
+| GET, POST `/api/addresses`, PATCH, DELETE `/api/addresses/:id`, POST `/api/addresses/:id/default` | buyer | buku alamat pengiriman (maks. 10) |
 | GET, PATCH `/api/seller/store` | seller | informasi toko (+ gambar) |
 | GET `/api/seller/orders` | seller | pesanan masuk (hanya item tokonya) |
 | PATCH `/api/seller/orders/:id/status` | seller pemilik | ubah status sub-order |
@@ -148,6 +150,13 @@ curl -b jar.txt -H "Content-Type: application/json" \
 
 **Aturan hapus pengguna (Admin):** pengguna yang masih punya pesanan **berjalan** (menunggu pembayaran, diproses, atau dikirim), baik sebagai pembeli maupun penjual, tidak bisa dihapus (HTTP 409). Setelah pesanan selesai atau dibatalkan, pengguna boleh dihapus dan riwayat order tetap tersimpan lengkap dengan nama dan harga saat pembelian (`buyer_id`/`seller_id` menjadi NULL).
 
+## Fitur opsional (Fase 6)
+
+- **Wishlist:** ikon hati di kartu produk dan halaman detail, plus halaman `/buyer/wishlist` yang terpisah dari keranjang. Hanya produk publik yang bisa ditambahkan. Produk yang kemudian dinonaktifkan tetap tampil di daftar dengan tanda "Tidak tersedia lagi" agar bisa dihapus. Guest yang menekan hati diarahkan ke login lalu kembali ke produknya; seller dan admin tidak melihat tombol ini.
+- **Alamat pengiriman:** buku alamat di `/buyer/addresses` (maksimal 10, satu alamat utama). Saat checkout, alamat utama terisi otomatis dan bisa diganti lewat dropdown. Alamat **disalin ke pesanan** (nama, telepon, alamat), sehingga mengubah atau menghapus alamat tidak mengubah pesanan yang sudah dibuat. Detail pesanan menampilkan alamat yang dipakai saat itu.
+- **Filter dan pencarian lanjutan:** selain kategori, rentang harga, dan urutan harga, ada filter rating minimum, filter "hanya yang tersedia", urutan "terpopuler" dan "rating tertinggi", dan pencarian yang juga mencocokkan nama toko dan kategori. Filter berupa form GET sehingga URL hasil bisa dibagikan.
+- **Perbaikan aksesibilitas:** isi dialog hanya dirender saat terbuka. Sebelumnya halaman dengan banyak dialog (mis. satu per baris tabel pengguna) memiliki `id` ganda sehingga label form dan nama dialog bisa merujuk ke elemen tersembunyi.
+
 ## Keputusan desain penting (Fase 4)
 
 - **Checkout atomik:** satu transaksi PostgreSQL. Stok dikurangi dengan `UPDATE ... WHERE stock >= jumlah`, sehingga dua pembeli yang berebut stok terakhir tidak bisa sama-sama berhasil. Gagal di langkah mana pun berarti rollback total dan keranjang tidak dikosongkan.
@@ -161,7 +170,6 @@ curl -b jar.txt -H "Content-Type: application/json" \
 
 - Satu produk hanya punya satu gambar (sesuai skema), jadi "galeri" di halaman detail berisi satu gambar.
 - Gambar produk di seed adalah placeholder lokal berwarna per kategori, bukan foto asli.
-- Wishlist dan manajemen alamat pengiriman (opsional) belum dibuat; alamat diisi saat checkout.
 - Pembatas login disimpan di memori server: hitungan hilang saat restart dan tidak dibagi antar instance. Untuk produksi multi-instance, pindahkan ke penyimpanan bersama.
 - Sesi berupa cookie bertanda tangan tanpa daftar sesi di server: logout menghapus cookie di browser, tetapi cookie yang sudah dicuri tetap berlaku sampai kedaluwarsa (7 hari). Mengganti kata sandi tidak mengakhiri sesi di perangkat lain.
 - Admin belum bisa mengubah informasi toko (hanya moderasi produk). Buyer belum bisa membatalkan pesanan sendiri; pembatalan dilakukan penjual.

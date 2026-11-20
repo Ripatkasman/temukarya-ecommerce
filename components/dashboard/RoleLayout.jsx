@@ -7,6 +7,8 @@ export const NAV = {
   buyer: [
     { href: "/buyer", label: "Ringkasan", icon: "overview", exact: true },
     { href: "/buyer/profile", label: "Profil Saya", icon: "profile" },
+    { href: "/buyer/addresses", label: "Alamat Saya", icon: "address" },
+    { href: "/buyer/wishlist", label: "Favorit", icon: "wishlist" },
     { href: "/buyer/cart", label: "Keranjang", icon: "cart" },
     { href: "/buyer/orders", label: "Riwayat Pesanan", icon: "orders" },
   ],

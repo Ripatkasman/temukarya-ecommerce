@@ -14,14 +14,18 @@ function Availability({ stock }) {
 /**
  * Kartu produk.
  * product: { id, name, price, stock, image_url, store_name, rating_avg, rating_count }
- * `actions`: slot untuk tombol Add to Cart / Wishlist (diisi komponen klien yang benar-benar bekerja).
+ * `actions`: slot tombol Add to Cart. `overlay`: slot di pojok kanan atas gambar (tombol favorit).
+ * Keduanya diisi komponen yang benar-benar bekerja.
  */
-export default function ProductCard({ product, actions }) {
+export default function ProductCard({ product, actions, overlay }) {
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface transition-colors hover:border-primary/50">
-      <Link href={`/products/${product.id}`} className="block overflow-hidden" aria-label={`Lihat ${product.name}`} tabIndex={-1}>
-        <ProductImage src={product.image_url} alt={product.name} className="transition-transform duration-300 group-hover:scale-[1.03]" />
-      </Link>
+      <div className="relative">
+        <Link href={`/products/${product.id}`} className="block overflow-hidden" aria-label={`Lihat ${product.name}`} tabIndex={-1}>
+          <ProductImage src={product.image_url} alt={product.name} className="transition-transform duration-300 group-hover:scale-[1.03]" />
+        </Link>
+        {overlay && <div className="absolute right-2 top-2">{overlay}</div>}
+      </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="text-card-title line-clamp-2">
           <Link href={`/products/${product.id}`} className="hover:text-primary">{product.name}</Link>

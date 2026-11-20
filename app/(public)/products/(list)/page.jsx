@@ -1,6 +1,8 @@
 import ProductGrid from "@/components/commerce/ProductGrid";
 import ProductFilters from "@/components/commerce/ProductFilters";
 import AddToCart from "@/components/commerce/AddToCart";
+import WishlistToggle from "@/components/commerce/WishlistToggle";
+import { getWishlistIds } from "@/lib/repositories/wishlist";
 import Pagination from "@/components/ui/Pagination";
 import { getCurrentUser } from "@/lib/auth";
 import { parseProductFilters } from "@/lib/query";
@@ -11,15 +13,19 @@ export const dynamic = "force-dynamic";
 
 export default async function ProductsPage({ searchParams }) {
   const sp = await searchParams;
-  const { q, categoryId, minPrice, maxPrice, sort, page } = parseProductFilters(sp, SORT_OPTIONS.map((o) => o.value));
+  const { q, categoryId, minPrice, maxPrice, minRating, inStock, sort, page } = parseProductFilters(sp, SORT_OPTIONS.map((o) => o.value));
 
-  const [viewer, categories, result] = await Promise.all([
-    getCurrentUser(),
+  const viewer = await getCurrentUser();
+  const [categories, result, wished] = await Promise.all([
     listCategories(),
-    listProducts({ q, categoryId, minPrice, maxPrice, sort, page }),
+    listProducts({ q, categoryId, minPrice, maxPrice, minRating, inStock, sort, page }),
+    viewer?.role === "buyer" ? getWishlistIds(viewer.id) : Promise.resolve(new Set()),
   ]);
 
-  const params = { q, category: categoryId, min: minPrice, max: maxPrice, sort: sort === "newest" ? "" : sort };
+  const params = {
+    q, category: categoryId, min: minPrice, max: maxPrice, rating: minRating, stok: inStock ? "1" : "",
+    sort: sort === "newest" ? "" : sort,
+  };
   const activeCategory = categories.find((c) => c.id === categoryId);
 
   return (
@@ -31,7 +37,7 @@ export default async function ProductsPage({ searchParams }) {
         </p>
       </header>
 
-      <ProductFilters categories={categories} values={{ q, category: categoryId, min: minPrice, max: maxPrice, sort }} />
+      <ProductFilters categories={categories} values={{ q, category: categoryId, min: minPrice, max: maxPrice, rating: minRating, stok: inStock, sort }} />
 
       <p className="mb-4 mt-6 text-sm text-muted-strong" aria-live="polite">
         {result.total === 0
@@ -42,6 +48,7 @@ export default async function ProductsPage({ searchParams }) {
       <ProductGrid
         products={result.products}
         renderActions={(p) => <AddToCart product={p} viewer={viewer} />}
+        renderOverlay={(p) => <WishlistToggle product={p} viewer={viewer} wishlisted={wished.has(p.id)} />}
         empty={{ title: "Produk tidak ditemukan", description: "Coba kata kunci lain, ubah rentang harga, atau atur ulang filter.", actionLabel: "Atur ulang filter", actionHref: "/products" }}
       />
 

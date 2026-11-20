@@ -6,6 +6,8 @@ import PriceDisplay from "@/components/commerce/PriceDisplay";
 import Rating from "@/components/commerce/Rating";
 import ReviewCard from "@/components/commerce/ReviewCard";
 import AddToCart from "@/components/commerce/AddToCart";
+import WishlistToggle from "@/components/commerce/WishlistToggle";
+import { getWishlistIds } from "@/lib/repositories/wishlist";
 import Badge from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
 import { getCurrentUser } from "@/lib/auth";
@@ -27,7 +29,11 @@ export default async function ProductDetailPage({ params }) {
   const product = await getProduct(id);
   if (!product) notFound();
 
-  const [viewer, reviews] = await Promise.all([getCurrentUser(), listReviews(id)]);
+  const viewer = await getCurrentUser();
+  const [reviews, wished] = await Promise.all([
+    listReviews(id),
+    viewer?.role === "buyer" ? getWishlistIds(viewer.id) : Promise.resolve(new Set()),
+  ]);
 
   const stockBadge =
     product.stock <= 0 ? <Badge tone="error">Stok habis</Badge>
@@ -63,8 +69,9 @@ export default async function ProductDetailPage({ params }) {
           </div>
           <p className="mt-4"><PriceDisplay value={product.price} size="lg" /></p>
 
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap items-end gap-3">
             <AddToCart product={product} viewer={viewer} withQuantity />
+            <WishlistToggle product={product} viewer={viewer} wishlisted={wished.has(product.id)} withLabel className="border border-line" />
           </div>
 
           <section aria-labelledby="deskripsi" className="mt-8">

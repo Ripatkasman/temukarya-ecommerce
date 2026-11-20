@@ -9,6 +9,8 @@ import PriceDisplay from "@/components/commerce/PriceDisplay";
 import CategoryCard from "@/components/commerce/CategoryCard";
 import StoreCard from "@/components/commerce/StoreCard";
 import AddToCart from "@/components/commerce/AddToCart";
+import WishlistToggle from "@/components/commerce/WishlistToggle";
+import { getWishlistIds } from "@/lib/repositories/wishlist";
 import { getCurrentUser } from "@/lib/auth";
 import { listHomeProducts, listCategories, listRecommendedStores } from "@/lib/repositories/catalog";
 
@@ -49,7 +51,9 @@ export default async function HomePage() {
     listRecommendedStores(3),
   ]);
   const heroTiles = (isBuyer ? newest : popular).slice(0, 3);
+  const wished = isBuyer ? await getWishlistIds(viewer.id) : new Set();
   const renderActions = (p) => <AddToCart product={p} viewer={viewer} />;
+  const renderOverlay = (p) => <WishlistToggle product={p} viewer={viewer} wishlisted={wished.has(p.id)} />;
 
   return (
     <>
@@ -100,14 +104,16 @@ export default async function HomePage() {
       {isBuyer && recommended.length > 0 && (
         <section aria-labelledby="rekomendasi" className="container-page pt-12 md:pt-16">
           <SectionHeader id="rekomendasi" title="Rekomendasi produk" description="Dipilih acak dari katalog. Muat ulang halaman untuk melihat pilihan lain." href="/products" />
-          <ProductGrid products={recommended} renderActions={renderActions} />
+          <ProductGrid products={recommended} renderActions={renderActions}
+            renderOverlay={renderOverlay} />
         </section>
       )}
 
       {isBuyer && newest.length > 0 && (
         <section aria-labelledby="produk-baru" className="container-page pt-12 md:pt-16">
           <SectionHeader id="produk-baru" title="Baru di TemuKarya" description="Karya yang baru saja ditambahkan penjual." href="/products?sort=newest" />
-          <ProductGrid products={newest} renderActions={renderActions} />
+          <ProductGrid products={newest} renderActions={renderActions}
+            renderOverlay={renderOverlay} />
         </section>
       )}
 
@@ -121,6 +127,7 @@ export default async function HomePage() {
         <ProductGrid
           products={popular}
           renderActions={renderActions}
+            renderOverlay={renderOverlay}
           empty={{ title: "Belum ada produk", description: "Produk dari penjual terverifikasi akan tampil di sini.", actionLabel: "Lihat semua produk", actionHref: "/products" }}
         />
       </section>

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import ProductImage from "@/components/commerce/ProductImage";
 import ProductGrid from "@/components/commerce/ProductGrid";
 import AddToCart from "@/components/commerce/AddToCart";
+import WishlistToggle from "@/components/commerce/WishlistToggle";
+import { getWishlistIds } from "@/lib/repositories/wishlist";
 import Pagination from "@/components/ui/Pagination";
 import { getCurrentUser } from "@/lib/auth";
 import { parseId } from "@/lib/validation";
@@ -23,7 +25,11 @@ export default async function StorePage({ params, searchParams }) {
 
   const pageRaw = Number((await searchParams).page);
   const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
-  const [viewer, result] = await Promise.all([getCurrentUser(), listProducts({ storeId: id, page })]);
+  const viewer = await getCurrentUser();
+  const [result, wished] = await Promise.all([
+    listProducts({ storeId: id, page }),
+    viewer?.role === "buyer" ? getWishlistIds(viewer.id) : Promise.resolve(new Set()),
+  ]);
 
   return (
     <div className="container-page py-8 md:py-12">
@@ -45,6 +51,7 @@ export default async function StorePage({ params, searchParams }) {
         <ProductGrid
           products={result.products}
           renderActions={(p) => <AddToCart product={p} viewer={viewer} />}
+          renderOverlay={(p) => <WishlistToggle product={p} viewer={viewer} wishlisted={wished.has(p.id)} />}
           empty={{ title: "Belum ada produk", description: "Toko ini belum menampilkan produk.", actionLabel: "Jelajahi produk lain", actionHref: "/products" }}
         />
         <div className="mt-10">

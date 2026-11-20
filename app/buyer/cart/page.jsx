@@ -1,18 +1,18 @@
 import { ShoppingCart } from "lucide-react";
 import PageHeader from "@/components/dashboard/PageHeader";
 import CartItemRow from "@/components/dashboard/CartItemRow";
-import { ServerForm, TextField, AreaField, SubmitBtn } from "@/components/dashboard/ServerForm";
+import CheckoutForm from "@/components/dashboard/CheckoutForm";
 import { EmptyState } from "@/components/ui/States";
 import { requireRole } from "@/lib/auth";
 import { getCart, getProfile } from "@/lib/repositories/buyer";
-import { checkoutAction } from "@/lib/actions/buyer";
+import { listAddresses } from "@/lib/repositories/addresses";
 import { formatRupiah } from "@/lib/format";
 
 export const metadata = { title: "Keranjang" };
 
 export default async function BuyerCartPage() {
   const me = await requireRole(["buyer"]);
-  const [cart, profile] = await Promise.all([getCart(me.id), getProfile(me.id)]);
+  const [cart, profile, addresses] = await Promise.all([getCart(me.id), getProfile(me.id), listAddresses(me.id)]);
   const blocked = cart.items.some((i) => !i.available || !i.enough);
 
   if (cart.items.length === 0) {
@@ -42,13 +42,7 @@ export default async function BuyerCartPage() {
             <dd className="font-heading text-xl font-bold text-primary">{formatRupiah(cart.total)}</dd>
           </dl>
           {blocked && <p role="alert" className="mb-4 rounded-btn bg-warning-soft px-3 py-2 text-sm font-medium text-warning-strong">Ada produk yang stoknya kurang atau tidak tersedia. Perbarui keranjang sebelum checkout.</p>}
-          <ServerForm action={checkoutAction}>
-            <TextField name="recipientName" label="Nama penerima" required maxLength={100} defaultValue={profile.full_name} />
-            <TextField name="recipientPhone" label="Nomor telepon" required defaultValue={profile.phone ?? ""} />
-            <AreaField name="shippingAddress" label="Alamat pengiriman" required rows={3} maxLength={500} hint="Tulis alamat lengkap: jalan, kelurahan, kota, kode pos." />
-            <AreaField name="notes" label="Catatan untuk penjual (opsional)" rows={2} maxLength={300} />
-            <SubmitBtn size="lg" loadingLabel="Memproses…" className="w-full">Buat pesanan</SubmitBtn>
-          </ServerForm>
+          <CheckoutForm addresses={addresses} profile={{ name: profile.full_name, phone: profile.phone ?? "" }} />
         </section>
       </div>
     </>
