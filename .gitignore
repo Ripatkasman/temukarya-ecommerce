@@ -7,6 +7,10 @@ out
 .DS_Store
 public/uploads/*
 !public/uploads/.gitkeep
+AGENT
+docs
+scripts
+tests
 
 # Gambar unggahan pengguna (folder dipertahankan lewat .gitkeep)
 /uploads/*

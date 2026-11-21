@@ -7,7 +7,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:reset": "node --env-file=.env.local scripts/db-reset.mjs",
+    "test:api": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/api/api.mjs",
+    "test:hardening": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/api/hardening.mjs",
+    "test:e2e:auth": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/e2e/public-auth.mjs",
+    "test:e2e:dashboards": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/e2e/dashboards.mjs",
+    "test:e2e:features": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/e2e/optional-features.mjs",
+    "test:e2e:journey": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/e2e/journey.mjs",
+    "test:e2e:audit": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/e2e/audit.mjs",
+    "test:e2e:keyboard": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/e2e/keyboard-links.mjs",
+    "test:e2e:images": "node --env-file=.env.local scripts/db-reset.mjs --yes && node --env-file=.env.local tests/e2e/images.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

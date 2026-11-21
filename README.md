@@ -1,104 +1,117 @@
 # TemuKarya
 
-> Tempat Karya Lokal Bertemu Kepercayaan.
+> Tempat karya lokal bertemu kepercayaan.
 
-Marketplace multi-seller (Admin, Seller, Buyer, Guest) untuk tugas final Praktikum Pemrograman Web 2026.
-Stack: Next.js (App Router, JSX), Tailwind CSS v4, Lucide, PostgreSQL (Raw SQL via `pg`).
-Spesifikasi lengkap ada di `AGENT.md`.
+Marketplace multi-seller untuk **Tugas Final Praktikum Pemrograman Web 2026 (Proyek 1: E-Commerce)**.
+Peran: **Admin, Seller, Buyer, dan Guest**.
 
-## Status
+**Stack:** Next.js 16 (App Router, JSX), Tailwind CSS v4, PostgreSQL dengan **raw SQL** (`pg`, tanpa ORM),
+Server Actions **dan** Route Handler REST.
 
-| Fase | Isi | Status |
-|---|---|---|
-| 1 | Inspeksi dan rencana | Selesai |
-| 2 | Fondasi desain dan komponen dasar | **Selesai** |
-| 3 | Halaman publik dan autentikasi | **Selesai** (sudah memakai database sungguhan) |
-| 4 | Dashboard Buyer/Seller/Admin | Belum |
-| 5 | Backend, database, checkout, ulasan | Belum |
-| 6 | Fitur opsional (wishlist, alamat pengiriman, filter dan pencarian lanjutan) | **Selesai** |
-| 7 | Pengujian dan dokumentasi akhir | Belum |
+## Menjalankan (untuk penilai)
 
-## Menjalankan
+Prasyarat: **Node.js 20.9+** (disarankan 22 LTS) dan **PostgreSQL 13+**.
 
 ```bash
+git clone <url-repository> && cd <folder>
 npm install
-npm run dev        # http://localhost:3000
 ```
 
-Halaman rujukan komponen (hanya saat development): `/design-system` dan `/design-system/dashboard`.
+**1. Siapkan database (pgAdmin)**
 
-### Database (wajib sejak Fase 3)
+1. Buat database kosong bernama `temukarya`.
+2. Buka *Query Tool* pada database itu, jalankan isi `database/schema.sql` (F5), lalu `database/seed.sql` (F5).
+   Urutannya harus begitu. `schema.sql` menghapus tabel lama sebelum membuatnya ulang, jadi jalankan ulang hanya jika ingin mereset data.
 
-1. Buat database `temukarya` di pgAdmin.
-2. Jalankan `database/schema.sql`, lalu `database/seed.sql` (Query Tool, F5).
-   Catatan: `schema.sql` menghapus tabel lama, jangan dijalankan ulang setelah ada data.
-3. Salin `.env.example` menjadi `.env.local` dan isi `DATABASE_URL` serta `SESSION_SECRET` (minimal 32 karakter). Fase 3 sudah membutuhkan database, jadi langkah ini wajib sebelum `npm run dev`.
+   Alternatif tanpa pgAdmin, setelah langkah 3: `npm run db:reset -- --yes` (menjalankan kedua file yang sama).
 
-Seed juga berisi 12 produk dari 3 toko, 1 pesanan selesai, dan 3 ulasan (data demo). Akun demo (dari `seed.sql`):
+**2. Atur environment**
+
+Salin `.env.example` menjadi `.env.local`, lalu isi:
+
+```
+DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/temukarya
+SESSION_SECRET=<string acak minimal 32 karakter>
+```
+
+Contoh membuat `SESSION_SECRET`: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+
+**3. Jalankan**
+
+```bash
+npm run dev                 # http://localhost:3000  (mode pengembangan)
+# atau mode produksi:
+npm run build && npm start
+```
+
+Folder `uploads/` (gambar unggahan penjual) dibuat otomatis dan harus bisa ditulis.
+
+### Akun demo (dari `seed.sql`)
 
 | Peran | Email | Password |
 |---|---|---|
 | Admin | admin@temukarya.id | Admin123! |
 | Seller aktif | seller@temukarya.id | Seller123! |
-| Seller pending | pending@temukarya.id | Seller123! |
-| Seller ditolak | rejected@temukarya.id | Seller123! |
 | Seller aktif 2 | seller2@temukarya.id | Seller123! |
 | Seller aktif 3 | seller3@temukarya.id | Seller123! |
+| Seller pending | pending@temukarya.id | Seller123! |
+| Seller ditolak | rejected@temukarya.id | Seller123! |
 | Buyer | buyer@temukarya.id | Buyer123! |
 
-## Struktur
+Seed juga berisi 6 kategori, 12 produk dari 3 toko, 1 pesanan selesai, dan 3 ulasan (data demo).
+Password ini hanya untuk demo.
+
+## Fitur per peran
+
+| Peran | Yang bisa dilakukan |
+|---|---|
+| **Guest** | Melihat beranda, daftar produk (cari, filter, urutkan), detail produk + ulasan, halaman toko. Add to Cart dan favorit mengarah ke login. |
+| **Buyer** | Beranda dengan rekomendasi acak; keranjang (ubah jumlah, hapus); checkout atomik; riwayat dan pelacakan pesanan; rating dan ulasan setelah pesanan Selesai; profil dan kata sandi; buku alamat; wishlist. |
+| **Seller** | Mendaftar (status *Pending*), halaman "Akun Anda sedang ditinjau", tombol Hapus Akun jika ditolak. Setelah disetujui: kelola toko (nama, deskripsi, gambar), CRUD produk (stok, kategori, gambar), pesanan masuk khusus tokonya, ubah status pesanan. |
+| **Admin** | Ringkasan platform; lihat, ubah, hapus pengguna (kecuali diri sendiri); verifikasi seller (Approve/Reject); hapus produk yang melanggar; CRUD kategori. |
+
+Kesesuaian butir demi butir dengan PDF tugas ada di [`docs/KESESUAIAN_TUGAS.md`](docs/KESESUAIAN_TUGAS.md).
+
+## Arsitektur
 
 ```
-app/                 halaman dan layout (App Router)
+Browser ── halaman/form ──► Server Action ─┐
+        └─ fetch /api/** ─► Route Handler ─┴─► lib/services  (validasi + aturan bisnis)
+                                                  └─► lib/repositories  (raw SQL berparameter) ──► PostgreSQL
+```
+
+Server Action dan Route Handler hanyalah **adapter tipis** di atas satu lapisan logika, sehingga aturan bisnis tidak
+bisa berbeda antar jalur dan hanya ditulis satu kali.
+
+```
+app/                 halaman (App Router)
   (public)/          beranda, /products, /products/[id], /stores/[id], /about
   (auth)/            /login, /register
-  seller/pending     status seller pending/ditolak (+ hapus akun)
-  admin/            ringkasan, pengguna, verifikasi seller, produk, kategori
-  seller/(dashboard) ringkasan, toko, produk (CRUD + upload gambar), pesanan masuk
-  buyer/            ringkasan, profil, alamat, favorit, keranjang + checkout, riwayat & detail pesanan, ulasan
-  api/              Route Handler REST (lihat bagian API di bawah)
-  uploads/[name]    route yang menyajikan gambar unggahan dari folder uploads/
-components/
-  brand/             BrandLogo (logo sementara)
-  ui/                Button, Input, PasswordInput, Textarea, Select, Checkbox, Badge,
-                     StatusBadges, Modal, ConfirmationDialog, FormDialog, Toast,
-                     Dropdown, Pagination, States (Empty/Error/Loading/Skeleton)
-  layout/            Navbar, Footer
-  commerce/          ProductCard, ProductGrid, ProductImage, Rating, PriceDisplay,
-                     CategoryCard, StoreCard, ReviewCard
-  dashboard/         DashboardShell, PageHeader, StatCard, DataTable
-lib/                 cn.js, format.js, db.js (pool pg), session.js (cookie bertanda tangan),
-                     auth.js (guard role), validation.js
-  repositories/      SQL mentah per domain (users, catalog, cart)
-  services/          logika bisnis + validasi per peran (dipakai bersama oleh actions dan API)
-  actions/           Server Actions (adapter tipis di atas services)
-  api.js             pembungkus Route Handler (cek origin, sesi+role, body JSON/multipart, bentuk respons)
-  uploads.js         validasi (magic bytes, 2 MB) dan penyimpanan gambar ke folder uploads/
-database/            schema.sql, seed.sql
-public/brand/        logo-mark.svg (sementara)
-public/uploads/      gambar unggahan (Fase 5)
+  admin/             ringkasan, pengguna, verifikasi seller, produk, kategori
+  seller/(dashboard) ringkasan, toko, produk (CRUD + upload), pesanan masuk
+  seller/pending     status seller pending/ditolak
+  buyer/             ringkasan, profil, alamat, favorit, keranjang + checkout, pesanan, ulasan
+  api/               Route Handler REST
+  uploads/[name]     menyajikan gambar unggahan
+components/          ui/ (komponen dasar), layout/, commerce/, dashboard/, auth/, brand/
+lib/                 db.js, session.js, auth.js, api.js, validation.js, uploads.js, rateLimit.js
+  repositories/      SQL mentah per domain
+  services/          logika bisnis per peran
+  actions/           Server Actions
+database/            schema.sql, seed.sql      (di luar /app, sesuai aturan tugas)
+scripts/db-reset.mjs
+tests/               uji otomatis (lihat tests/README.md)
+docs/                KESESUAIAN_TUGAS.md, PRESENTASI.md
+proxy.js             penjaga awal route dashboard (pengganti middleware di Next.js 16)
 ```
-
-## Design tokens
-
-Didefinisikan di `app/globals.css` (blok `@theme`). Pakai nama token, bukan hex mentah:
-`bg-primary`, `bg-cream`, `bg-accent`, `text-charcoal`, `bg-canvas`, `border-line`,
-`text-muted-strong`, `bg-success-soft`, dst.
-
-Catatan kontras (hasil pengecekan WCAG):
-- `muted` (#777B75) hanya 4.1:1, jadi dipakai untuk teks besar/dekoratif saja. Teks kecil sekunder memakai `muted-strong` (5.8:1).
-- Teks putih di atas `accent` (terakota) hanya 2.7:1, jadi tombol aksen memakai teks `charcoal` (5.2:1).
-
-## Yang perlu diganti sebelum final
-
-- Logo: `public/brand/logo-mark.svg` dan `components/brand/BrandLogo.jsx` (logo sementara buatan sendiri).
-- `app/design-system` otomatis 404 pada build production; boleh dihapus sebelum pengumpulan.
 
 ## API (Route Handler)
 
-Aplikasi punya **dua jalur akses yang memakai logika yang sama**: Server Action (dipakai form di UI) dan Route Handler REST di `app/api/**`. Keduanya adalah adapter tipis di atas `lib/services/*` (validasi + aturan bisnis) dan `lib/repositories/*` (raw SQL), sehingga aturan tidak ditulis dua kali.
-
-Autentikasi: cookie sesi `tk_session` (httpOnly, SameSite=Lax) dari `POST /api/auth/login`. Body berupa JSON, atau `multipart/form-data` untuk endpoint dengan gambar. Respons selalu `{ ok, message?, data?, errors? }` dengan kode status: 200/201 sukses, 401 belum login, 403 role salah / seller belum disetujui, 404 tidak ada atau bukan milik Anda, 409 konflik (duplikat, stok, transisi status), 415 tipe body salah, 422 validasi per field, 500 kesalahan server. Request pengubah data dengan header `Origin` dari host lain ditolak (403).
+Autentikasi: cookie sesi `tk_session` (httpOnly, SameSite=Lax) dari `POST /api/auth/login`. Body JSON, atau
+`multipart/form-data` untuk endpoint dengan gambar. Respons selalu `{ ok, message?, data?, errors? }` dengan kode status:
+200/201 sukses, 401 belum login, 403 role salah / seller belum disetujui, 404 tidak ada atau bukan milik Anda,
+409 konflik (duplikat, stok, transisi status), 415 tipe body salah, 422 validasi per field, 429 terlalu banyak percobaan login,
+500 kesalahan server. Request pengubah data dengan header `Origin` dari host lain ditolak (403).
 
 | Metode dan path | Akses | Fungsi |
 |---|---|---|
@@ -118,15 +131,13 @@ Autentikasi: cookie sesi `tk_session` (httpOnly, SameSite=Lax) dari `POST /api/a
 | GET `/api/orders/:id` | buyer pemilik | detail + pelacakan |
 | POST `/api/order-items/:id/review` | buyer pemilik | ulasan (hanya sub-order Selesai) |
 | GET, PATCH `/api/profile`, PATCH `/api/profile/password` | buyer | profil dan kata sandi |
-| GET, POST `/api/wishlist`, DELETE `/api/wishlist/:productId` | buyer | daftar favorit (terpisah dari keranjang) |
-| GET, POST `/api/addresses`, PATCH, DELETE `/api/addresses/:id`, POST `/api/addresses/:id/default` | buyer | buku alamat pengiriman (maks. 10) |
+| GET, POST `/api/wishlist`, DELETE `/api/wishlist/:productId` | buyer | daftar favorit |
+| GET, POST `/api/addresses`, PATCH, DELETE `/api/addresses/:id`, POST `/api/addresses/:id/default` | buyer | buku alamat (maks. 10) |
 | GET, PATCH `/api/seller/store` | seller | informasi toko (+ gambar) |
 | GET `/api/seller/orders` | seller | pesanan masuk (hanya item tokonya) |
 | PATCH `/api/seller/orders/:id/status` | seller pemilik | ubah status sub-order |
 | GET `/api/admin/users`, PATCH/DELETE `/api/admin/users/:id` | admin | kelola pengguna |
 | GET `/api/admin/sellers`, POST `/api/admin/sellers/:id/decision` | admin | verifikasi seller (`approve`/`reject`) |
-
-Contoh (curl, simpan cookie dengan `-c`/`-b`):
 
 ```bash
 curl -c jar.txt -H "Content-Type: application/json" \
@@ -135,44 +146,68 @@ curl -b jar.txt -H "Content-Type: application/json" \
   -d '{"productId":"1","quantity":2}' http://localhost:3000/api/cart
 ```
 
-## Keamanan dan integritas data (Fase 5)
+## Keamanan dan integritas data
 
 | Lapisan | Perlindungan |
 |---|---|
 | Autentikasi | Password di-hash bcrypt. Sesi = cookie `httpOnly`, `SameSite=Lax`, bertanda tangan HMAC. Role dan status seller dibaca ulang dari database di setiap request. Perbandingan password tetap dijalankan (hash tiruan) saat email tidak ada agar waktu respons tidak membocorkan email terdaftar. |
-| Pembatas login | 5 kegagalan per kombinasi IP + email dalam 15 menit menghasilkan HTTP 429; login berhasil mereset hitungan. Disimpan di memori server. |
-| Proxy (`proxy.js`) | Pengganti "middleware" di Next.js 16. Request ke `/admin`, `/seller`, `/buyer` tanpa cookie sesi langsung dialihkan ke `/login?next=`. Hanya penjagaan awal; otorisasi sebenarnya tetap di server. |
-| Otorisasi server | `requireRole()` (Server Action dan halaman) serta `route({ roles })` (Route Handler). Seller hanya lolos jika `approved`. Semua query baca/ubah/hapus dibatasi pemilik (`WHERE seller_id = $sesi` atau `buyer_id = $sesi`). Kepemilikan yang salah dijawab 404, bukan 403, agar keberadaan data orang lain tidak bocor. |
-| Database | `CHECK` (harga > 0, stok >= 0, jumlah >= 1, rating 1-5), `UNIQUE`, FK dengan aturan hapus yang terdokumentasi, serta trigger: transisi status sub-order, kelayakan ulasan, dan (baru) **role tidak bisa diubah** dan **status seller hanya `pending` -> `approved`/`rejected`**. |
-| Header HTTP | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` (di `next.config.mjs`). |
-| Upload | Tipe dari isi file (JPG/PNG/WebP, bukan SVG), maksimal 2 MB, nama acak, disajikan dengan `nosniff`. |
+| Pembatas login | 5 kegagalan per kombinasi IP + email dalam 15 menit menghasilkan HTTP 429; login berhasil mereset hitungan. |
+| Proxy (`proxy.js`) | Request ke `/admin`, `/seller`, `/buyer` tanpa cookie sesi dialihkan ke `/login?next=`. Hanya penjagaan awal; otorisasi sebenarnya di server. |
+| Otorisasi server | `requireRole()` (halaman dan Server Action) serta `route({ roles })` (Route Handler). Seller hanya lolos jika `approved`. Semua query baca/ubah/hapus dibatasi pemilik (`WHERE seller_id = $sesi` atau `buyer_id = $sesi`). Kepemilikan yang salah dijawab 404, bukan 403, agar keberadaan data orang lain tidak bocor. |
+| Database | `CHECK` (harga > 0, stok >= 0, jumlah >= 1, rating 1-5), `UNIQUE`, FK dengan aturan hapus terdokumentasi, serta trigger: transisi status sub-order, kelayakan ulasan, **role tidak bisa diubah**, dan **status seller hanya `pending` -> `approved`/`rejected`**. |
+| Header HTTP | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`. |
+| Upload | Tipe dicek dari isi file (JPG/PNG/WebP, bukan SVG), maksimal 2 MB, nama acak, disajikan dengan `nosniff`. |
 | SQL | Selalu berparameter. `ORDER BY` hanya dari daftar yang diizinkan, `LIKE` di-escape. |
 
-**Aturan hapus pengguna (Admin):** pengguna yang masih punya pesanan **berjalan** (menunggu pembayaran, diproses, atau dikirim), baik sebagai pembeli maupun penjual, tidak bisa dihapus (HTTP 409). Setelah pesanan selesai atau dibatalkan, pengguna boleh dihapus dan riwayat order tetap tersimpan lengkap dengan nama dan harga saat pembelian (`buyer_id`/`seller_id` menjadi NULL).
+## Keputusan desain penting
 
-## Fitur opsional (Fase 6)
-
-- **Wishlist:** ikon hati di kartu produk dan halaman detail, plus halaman `/buyer/wishlist` yang terpisah dari keranjang. Hanya produk publik yang bisa ditambahkan. Produk yang kemudian dinonaktifkan tetap tampil di daftar dengan tanda "Tidak tersedia lagi" agar bisa dihapus. Guest yang menekan hati diarahkan ke login lalu kembali ke produknya; seller dan admin tidak melihat tombol ini.
-- **Alamat pengiriman:** buku alamat di `/buyer/addresses` (maksimal 10, satu alamat utama). Saat checkout, alamat utama terisi otomatis dan bisa diganti lewat dropdown. Alamat **disalin ke pesanan** (nama, telepon, alamat), sehingga mengubah atau menghapus alamat tidak mengubah pesanan yang sudah dibuat. Detail pesanan menampilkan alamat yang dipakai saat itu.
-- **Filter dan pencarian lanjutan:** selain kategori, rentang harga, dan urutan harga, ada filter rating minimum, filter "hanya yang tersedia", urutan "terpopuler" dan "rating tertinggi", dan pencarian yang juga mencocokkan nama toko dan kategori. Filter berupa form GET sehingga URL hasil bisa dibagikan.
-- **Perbaikan aksesibilitas:** isi dialog hanya dirender saat terbuka. Sebelumnya halaman dengan banyak dialog (mis. satu per baris tabel pengguna) memiliki `id` ganda sehingga label form dan nama dialog bisa merujuk ke elemen tersembunyi.
-
-## Keputusan desain penting (Fase 4)
-
-- **Checkout atomik:** satu transaksi PostgreSQL. Stok dikurangi dengan `UPDATE ... WHERE stock >= jumlah`, sehingga dua pembeli yang berebut stok terakhir tidak bisa sama-sama berhasil. Gagal di langkah mana pun berarti rollback total dan keranjang tidak dikosongkan.
-- **Pesanan multi-toko:** satu `orders` (induk) berisi beberapa `store_orders` (satu per toko). Status induk **tidak disimpan**, melainkan diturunkan dari sub-order (lihat `deriveOrderStatus` di `lib/repositories/buyer.js`). Seller hanya melihat dan mengubah sub-order miliknya.
+- **Checkout atomik:** satu transaksi PostgreSQL. Stok dikurangi dengan `UPDATE ... WHERE stock >= jumlah`, sehingga pembeli yang berebut stok terakhir tidak bisa sama-sama berhasil. Gagal di langkah mana pun berarti rollback total dan keranjang tidak dikosongkan. Produk diproses berurutan menurut id agar dua checkout serentak tidak deadlock.
+- **Pesanan multi-toko:** satu `orders` (induk) berisi beberapa `store_orders` (satu per toko). Status induk **tidak disimpan**, melainkan diturunkan dari sub-order (`deriveOrderStatus` di `lib/repositories/buyer.js`). Seller hanya melihat dan mengubah sub-order miliknya.
 - **Alur status oleh seller:** Menunggu Pembayaran → Diproses → Dikirim → Selesai; Dibatalkan hanya dari Menunggu Pembayaran atau Diproses dan mengembalikan stok. Pembayaran hanya simulasi: "Proses pesanan" berarti seller menganggap pembayaran sudah diterima.
 - **Ulasan:** hanya untuk item dari sub-order berstatus Selesai milik pembeli itu sendiri. `product_id` dan `buyer_id` diturunkan di SQL, bukan dari form.
-- **Admin:** boleh mengubah nama/email/telepon, tetapi tidak role atau status seller. Tidak bisa menghapus akun sendiri. Menghapus produk memang menghapus permanen (sesuai tugas); riwayat pesanan tetap aman karena item pesanan menyimpan nama dan harga saat pembelian.
-- **Upload gambar:** disimpan di folder `uploads/` (di luar `public/`) dan disajikan oleh `app/uploads/[name]/route.js`, karena file yang ditambahkan ke `public/` setelah build tidak disajikan oleh `next start`. Tipe file dicek dari isi file (JPG/PNG/WebP), maksimal 2 MB.
+- **Aturan hapus pengguna:** pengguna yang masih punya pesanan berjalan (menunggu, diproses, atau dikirim), sebagai pembeli maupun penjual, tidak bisa dihapus (409). Setelah selesai atau dibatalkan, pengguna boleh dihapus dan riwayat order tetap tersimpan lengkap dengan nama dan harga saat pembelian.
+- **Menghapus produk** (oleh seller atau admin) menghapusnya permanen beserta ulasannya dan item di keranjang pembeli. Riwayat pesanan tetap aman karena item pesanan menyimpan salinan nama dan harga.
+- **Alamat disalin ke pesanan:** mengubah atau menghapus alamat di buku alamat tidak mengubah pesanan yang sudah dibuat.
+- **Admin** boleh mengubah nama, email, dan telepon pengguna, tetapi tidak role atau status seller.
+- **Upload** disimpan di `uploads/` (di luar `public/`) dan disajikan oleh `app/uploads/[name]/route.js`, karena file yang ditambahkan ke `public/` setelah build tidak disajikan oleh `next start`.
+
+## Pengujian
+
+Skrip uji ada di `tests/` (lihat [`tests/README.md`](tests/README.md)). Semuanya berjalan terhadap aplikasi dan database nyata.
+
+| Suite | Skenario | Fokus |
+|---|---|---|
+| `npm run test:api` | 82 | semua endpoint, status HTTP, kepemilikan data |
+| `npm run test:hardening` | 35 | trigger DB, aturan hapus user, pembatas login, proxy, 12 checkout serentak |
+| `npm run test:e2e:auth` | 64 | halaman publik, login/register, status seller |
+| `npm run test:e2e:dashboards` | 96 | dashboard 3 peran, upload, request yang dipalsukan, checkout, ulasan |
+| `npm run test:e2e:features` | 67 | wishlist, alamat, filter, aksesibilitas dialog |
+| `npm run test:e2e:journey` | 26 | alur lengkap lintas peran dari akun baru |
+| `npm run test:e2e:audit` | 124 kombinasi | axe-core WCAG 2 A/AA: **0 pelanggaran**; **0 overflow horizontal** di 360/768/1280/1536 px; **0 gambar rusak** |
+| `npm run test:e2e:keyboard` | 315 fokus, 99 tautan | semua elemen fokus punya indikator; dialog mengunci fokus; **0 tautan rusak** |
+
+Uji browser memerlukan `npm i -D playwright axe-core` dan `npx playwright install chromium`.
+Setiap perintah mereset database terlebih dahulu (`npm run db:reset`), jadi jalankan di database uji.
+
+## Mengubah tampilan
+
+Tampilan dipisahkan dari logika, sehingga aman diubah:
+
+- **Warna, font, radius:** blok `@theme` di `app/globals.css` (`bg-primary`, `bg-cream`, `text-charcoal`, `border-line`, ...). Pakai nama token, bukan hex mentah.
+- **Komponen:** `components/ui`, `components/commerce`, `components/layout`, `components/dashboard`.
+- **Jangan ubah:** atribut `name` pada field form (dibaca validasi server), serta peran `ServerForm`, `ConfirmAction`, dan `DialogForm`.
+- Cek kontras saat mengganti warna: `muted` (4,1:1) hanya untuk teks besar; teks kecil memakai `muted-strong` (5,8:1); tombol aksen memakai teks `charcoal`.
+- Setelah mengubah, jalankan `npm run lint`, `npm run build`, dan `npm run test:e2e:audit`.
+
+Halaman rujukan komponen (hanya mode pengembangan): `/design-system` dan `/design-system/dashboard`.
 
 ## Batasan yang diketahui
 
-- Satu produk hanya punya satu gambar (sesuai skema), jadi "galeri" di halaman detail berisi satu gambar.
-- Gambar produk di seed adalah placeholder lokal berwarna per kategori, bukan foto asli.
-- Pembatas login disimpan di memori server: hitungan hilang saat restart dan tidak dibagi antar instance. Untuk produksi multi-instance, pindahkan ke penyimpanan bersama.
-- Sesi berupa cookie bertanda tangan tanpa daftar sesi di server: logout menghapus cookie di browser, tetapi cookie yang sudah dicuri tetap berlaku sampai kedaluwarsa (7 hari). Mengganti kata sandi tidak mengakhiri sesi di perangkat lain.
+- Satu produk hanya punya satu gambar (sesuai skema), jadi "galeri" di halaman detail berisi satu gambar. Gambar di seed adalah placeholder lokal.
+- Pembatas login disimpan di memori server: hilang saat restart dan tidak dibagi antar instance.
+- Sesi berupa cookie bertanda tangan tanpa daftar sesi di server: cookie yang sudah dicuri tetap berlaku sampai kedaluwarsa (7 hari), dan mengganti kata sandi tidak mengakhiri sesi di perangkat lain.
 - Admin belum bisa mengubah informasi toko (hanya moderasi produk). Buyer belum bisa membatalkan pesanan sendiri; pembatalan dilakukan penjual.
-- Setelah form registrasi/login gagal divalidasi, kolom kata sandi dikosongkan (perilaku bawaan form React). Form di dashboard tidak dikosongkan.
-- File gambar lama yang tidak terpakai dihapus saat diganti/dihapus, tetapi tidak ada pembersihan terjadwal untuk file yatim akibat kegagalan di tengah proses.
-- Pembayaran hanya simulasi (tanpa payment gateway).
+- Setelah form registrasi/login gagal divalidasi, kolom kata sandi dikosongkan (perilaku bawaan form React).
+- Tidak ada pembersihan terjadwal untuk file gambar yatim akibat kegagalan di tengah proses.
+- Pembayaran hanya simulasi (tanpa payment gateway), sesuai tugas.
+- Logo adalah logo sementara (`components/brand/BrandLogo.jsx`, `public/brand/logo-mark.svg`).
