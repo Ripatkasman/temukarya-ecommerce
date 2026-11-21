@@ -80,7 +80,7 @@ export default async function BuyerOrderDetailPage({ params, searchParams }) {
           ))}
         </div>
 
-        <aside className="space-y-4 rounded-card border border-line bg-surface p-5">
+        <section aria-label="Ringkasan pesanan" className="space-y-4 rounded-card border border-line bg-surface p-5">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <span className="font-medium">Total pesanan</span>
             <span className="font-heading text-xl font-bold text-primary">{formatRupiah(order.total)}</span>
@@ -91,7 +91,7 @@ export default async function BuyerOrderDetailPage({ params, searchParams }) {
             {order.notes && <div><dt className="text-caption text-muted-strong">Catatan</dt><dd>{order.notes}</dd></div>}
           </dl>
           <p className="text-caption text-muted-strong">Pembayaran disimulasikan, tidak ada transaksi uang sungguhan.</p>
-        </aside>
+        </section>
       </div>
     </>
   );

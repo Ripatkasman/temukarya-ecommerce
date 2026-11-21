@@ -88,7 +88,7 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
       <aside className="sticky top-0 hidden h-dvh border-r border-line bg-surface lg:block">{sidebar}</aside>
 
       {/* Top bar mobile */}
-      <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-surface px-4 lg:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-surface px-4 lg:hidden">
         <BrandLogo markClassName="size-8" />
         <button
           type="button"
@@ -99,7 +99,7 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
         >
           <Menu className="size-6" aria-hidden="true" />
         </button>
-      </div>
+      </header>
 
       {/* Laci mobile */}
       {open && (

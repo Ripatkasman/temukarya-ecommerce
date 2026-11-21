@@ -22,7 +22,7 @@ export default async function BuyerOrdersPage({ searchParams }) {
     { key: "item_count", header: "Barang" },
     { key: "total", header: "Total", render: (o) => formatRupiah(o.total) },
     { key: "status", header: "Status", render: (o) => <OrderStatusBadge status={o.status} /> },
-    { key: "aksi", header: "", render: (o) => <Button href={`/buyer/orders/${o.id}`} variant="outline" size="sm" aria-label={`Lihat pesanan #${o.id}`}>Lihat detail</Button> },
+    { key: "aksi", header: "Aksi", render: (o) => <Button href={`/buyer/orders/${o.id}`} variant="outline" size="sm" aria-label={`Lihat detail pesanan #${o.id}`}>Lihat detail</Button> },
   ];
 
   return (

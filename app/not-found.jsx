@@ -11,6 +11,7 @@ export default function NotFound() {
       <SiteHeader />
       <main id="konten" className="container-page py-16">
         <EmptyState
+          as="h1"
           icon={SearchX}
           title="Halaman tidak ditemukan"
           description="Alamat yang kamu buka tidak ada atau sudah dipindahkan."

@@ -17,9 +17,9 @@ export default function AuthLayout({ children }) {
         <p className="text-caption text-cream/80">Where Local Dreams Meet Opportunities.</p>
       </aside>
       <div className="flex flex-col">
-        <div className="border-b border-line px-4 py-4 sm:px-6 lg:hidden">
+        <header className="border-b border-line px-4 py-4 sm:px-6 lg:hidden">
           <BrandLogo />
-        </div>
+        </header>
         <main id="konten" className="flex flex-1 items-start justify-center px-4 py-10 sm:px-6 lg:items-center">
           <div className="w-full max-w-md">{children}</div>
         </main>

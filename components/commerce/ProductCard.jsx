@@ -17,7 +17,8 @@ function Availability({ stock }) {
  * `actions`: slot tombol Add to Cart. `overlay`: slot di pojok kanan atas gambar (tombol favorit).
  * Keduanya diisi komponen yang benar-benar bekerja.
  */
-export default function ProductCard({ product, actions, overlay }) {
+export default function ProductCard({ product, actions, overlay, headingLevel = 3 }) {
+  const Heading = `h${headingLevel}`;
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface transition-colors hover:border-primary/50">
       <div className="relative">
@@ -27,9 +28,9 @@ export default function ProductCard({ product, actions, overlay }) {
         {overlay && <div className="absolute right-2 top-2">{overlay}</div>}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="text-card-title line-clamp-2">
+        <Heading className="text-card-title line-clamp-2">
           <Link href={`/products/${product.id}`} className="hover:text-primary">{product.name}</Link>
-        </h3>
+        </Heading>
         <PriceDisplay value={product.price} />
         <p className="flex items-center gap-1.5 text-caption text-muted-strong">
           <Store className="size-3.5 shrink-0" aria-hidden="true" />

@@ -21,6 +21,7 @@ export default async function BuyerWishlistPage() {
         <EmptyState icon={Heart} title="Belum ada produk favorit" description="Tekan ikon hati pada produk untuk menyimpannya di sini." actionLabel="Jelajahi produk" actionHref="/products" />
       ) : (
         <ProductGrid
+          headingLevel={2}
           products={items}
           renderOverlay={(p) => <WishlistButton productId={p.id} productName={p.name} initial />}
           renderActions={(p) =>

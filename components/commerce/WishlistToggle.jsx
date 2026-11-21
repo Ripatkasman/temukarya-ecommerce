@@ -16,7 +16,7 @@ export default function WishlistToggle({ product, viewer, wishlisted = false, wi
     return (
       <Link
         href={loginPathWithNext(`/products/${product.id}`)}
-        aria-label={`Masuk untuk menyimpan ${product.name} ke favorit`}
+        aria-label={withLabel ? undefined : `Masuk untuk menyimpan ${product.name} ke favorit`}
         className={cn(
           "flex items-center justify-center gap-2 rounded-full bg-surface/95 text-charcoal shadow-sm ring-1 ring-line hover:text-error",
           withLabel ? "min-h-11 px-4 text-sm font-semibold" : "size-11",

@@ -3,13 +3,13 @@ import Button from "./Button";
 import { cn } from "@/lib/cn";
 
 /** Keadaan kosong: selalu beri arahan, bukan halaman kosong. */
-export function EmptyState({ icon: Icon = Inbox, title, description, actionLabel, actionHref, className }) {
+export function EmptyState({ icon: Icon = Inbox, title, description, actionLabel, actionHref, className, as: Heading = "h2" }) {
   return (
     <div className={cn("flex flex-col items-center rounded-card border border-dashed border-line bg-surface px-6 py-12 text-center", className)}>
       <div className="flex size-14 items-center justify-center rounded-full bg-cream text-primary">
         <Icon className="size-7" aria-hidden="true" />
       </div>
-      <h3 className="mt-4 text-card-title">{title}</h3>
+      <Heading className="mt-4 text-card-title">{title}</Heading>
       {description && <p className="mt-1 max-w-sm text-sm text-muted-strong">{description}</p>}
       {actionLabel && actionHref && (
         <Button href={actionHref} className="mt-5">{actionLabel}</Button>
@@ -19,11 +19,11 @@ export function EmptyState({ icon: Icon = Inbox, title, description, actionLabel
 }
 
 /** Keadaan error: jelaskan apa yang salah dan beri jalan keluar (coba lagi). */
-export function ErrorState({ title = "Terjadi kesalahan", description = "Data tidak dapat dimuat. Coba lagi beberapa saat.", onRetry, className }) {
+export function ErrorState({ title = "Terjadi kesalahan", description = "Data tidak dapat dimuat. Coba lagi beberapa saat.", onRetry, className, as: Heading = "h2" }) {
   return (
     <div role="alert" className={cn("flex flex-col items-center rounded-card border border-error/30 bg-error-soft px-6 py-12 text-center", className)}>
       <TriangleAlert className="size-8 text-error-strong" aria-hidden="true" />
-      <h3 className="mt-3 text-card-title text-error-strong">{title}</h3>
+      <Heading className="mt-3 text-card-title text-error-strong">{title}</Heading>
       <p className="mt-1 max-w-sm text-sm text-error-strong">{description}</p>
       {onRetry && (
         <Button variant="outline" onClick={onRetry} className="mt-5">Coba lagi</Button>

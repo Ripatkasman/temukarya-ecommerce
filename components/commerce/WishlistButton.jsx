@@ -37,7 +37,7 @@ export default function WishlistButton({ productId, productName, initial = false
       type="button"
       onClick={click}
       aria-pressed={on}
-      aria-label={on ? `Hapus ${productName} dari favorit` : `Tambahkan ${productName} ke favorit`}
+      aria-label={withLabel ? undefined : on ? `Hapus ${productName} dari favorit` : `Tambahkan ${productName} ke favorit`}
       disabled={pending}
       className={cn(
         "flex items-center justify-center gap-2 rounded-full bg-surface/95 text-charcoal shadow-sm ring-1 ring-line transition-colors hover:text-error disabled:opacity-60",

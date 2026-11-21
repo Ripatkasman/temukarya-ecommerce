@@ -46,6 +46,7 @@ export default async function ProductsPage({ searchParams }) {
       </p>
 
       <ProductGrid
+        headingLevel={2}
         products={result.products}
         renderActions={(p) => <AddToCart product={p} viewer={viewer} />}
         renderOverlay={(p) => <WishlistToggle product={p} viewer={viewer} wishlisted={wished.has(p.id)} />}

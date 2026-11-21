@@ -22,7 +22,7 @@ export default async function AdminProductsPage({ searchParams }) {
       key: "name", header: "Produk",
       render: (p) => (
         <div className="flex items-center gap-3">
-          <span className="size-12 shrink-0 overflow-hidden rounded-btn border border-line"><ProductImage src={p.image_url} alt={p.name} className="size-full" /></span>
+          <span className="size-12 shrink-0 overflow-hidden rounded-btn border border-line"><ProductImage src={p.image_url} alt="" className="size-full" /></span>
           <span className="font-medium">{p.name}</span>
         </div>
       ),
