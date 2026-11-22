@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-labelledby="t d">
+  <title id="t">TemuKarya</title>
+  <desc id="d">Marketplace multi-seller. Tempat karya lokal bertemu kepercayaan.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#174b3a"/>
+      <stop offset="1" stop-color="#0f3328"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="320" rx="20" fill="url(#bg)"/>
+  <!-- motif logo (seperempat lingkaran) -->
+  <g opacity="0.95">
+    <circle cx="1040" cy="160" r="128" fill="none" stroke="#f5f0e6" stroke-opacity="0.18" stroke-width="2"/>
+    <path d="M920 172a120 120 0 0 1 120-120v120H920Z" fill="#d98b56"/>
+    <path d="M1160 148a120 120 0 0 1-120 120V148h120Z" fill="#f5f0e6"/>
+    <path d="M1040 172v96a96 96 0 0 1-96-96h96Z" fill="#f5f0e6" fill-opacity="0.16"/>
+  </g>
+  <text x="72" y="148" fill="#ffffff" font-family="'Plus Jakarta Sans','Inter','Segoe UI',Arial,sans-serif" font-size="76" font-weight="800" letter-spacing="-2">TemuKarya</text>
+  <text x="74" y="196" fill="#f5f0e6" font-family="'Inter','Segoe UI',Arial,sans-serif" font-size="28" font-weight="500">Tempat karya lokal bertemu kepercayaan.</text>
+  <g font-family="'Inter','Segoe UI',Arial,sans-serif" font-size="17" font-weight="600" fill="#f5f0e6">
+    <rect x="74" y="232" width="150" height="38" rx="19" fill="#ffffff" fill-opacity="0.12"/>
+    <text x="149" y="257" text-anchor="middle">Next.js 16</text>
+    <rect x="236" y="232" width="150" height="38" rx="19" fill="#ffffff" fill-opacity="0.12"/>
+    <text x="311" y="257" text-anchor="middle">PostgreSQL</text>
+    <rect x="398" y="232" width="150" height="38" rx="19" fill="#ffffff" fill-opacity="0.12"/>
+    <text x="473" y="257" text-anchor="middle">Raw SQL</text>
+    <rect x="560" y="232" width="196" height="38" rx="19" fill="#d98b56" fill-opacity="0.9"/>
+    <text x="658" y="257" text-anchor="middle" fill="#1f2421">Admin · Seller · Buyer</text>
+  </g>
+</svg>
