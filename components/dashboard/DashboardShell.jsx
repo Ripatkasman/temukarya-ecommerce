@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Menu, X, LayoutDashboard, User, ShoppingCart, Heart, ClipboardList, MapPin,
-  Store, Package, Inbox, Users, BadgeCheck, Tags, Eye,
+  Store, Package, Inbox, Users, BadgeCheck, Tags, Eye, Home,
 } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { cn } from "@/lib/cn";
@@ -48,8 +48,8 @@ function NavList({ items, onNavigate }) {
 
 /**
  * Kerangka dashboard untuk Buyer / Seller / Admin.
- * Desktop: sidebar tetap. Mobile: top bar + laci navigasi (bukan sidebar yang sekadar dikecilkan).
- * `logoutSlot`: form Server Action logout (diisi di Fase 5).
+ * Desktop: sidebar tetap. Mobile: top bar + laci navigasi.
+ * `logoutSlot`: form Server Action logout.
  */
 export default function DashboardShell({ roleLabel, userName, items, logoutSlot, children }) {
   const [open, setOpen] = useState(false);
@@ -78,7 +78,17 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
       <nav aria-label={`Menu ${roleLabel}`} className="flex-1 overflow-y-auto px-3 pb-4">
         <NavList items={items} onNavigate={() => setOpen(false)} />
       </nav>
-      {logoutSlot && <div className="border-t border-line p-3">{logoutSlot}</div>}
+      <div className="space-y-1 border-t border-line p-3">
+        <Link
+          href="/"
+          onClick={() => setOpen(false)}
+          className="flex min-h-11 items-center gap-3 rounded-btn px-3 text-sm font-medium text-charcoal transition-colors hover:bg-cream"
+        >
+          <Home className="size-5 shrink-0 text-muted-strong" aria-hidden="true" />
+          Ke Beranda
+        </Link>
+        {logoutSlot}
+      </div>
     </div>
   );
 
@@ -101,23 +111,38 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
         </button>
       </header>
 
-      {/* Laci mobile */}
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu dashboard">
-          <div className="absolute inset-0 bg-charcoal/50" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-72 max-w-[85%] bg-surface shadow-xl">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Tutup menu"
-              className="absolute right-2 top-3 flex size-11 items-center justify-center rounded-btn hover:bg-cream"
-            >
-              <X className="size-5" aria-hidden="true" />
-            </button>
-            {sidebar}
-          </div>
+      {/* Laci mobile dengan transisi halus */}
+      <div
+        className={cn(
+          "fixed inset-0 z-50 transition-opacity duration-300 lg:hidden",
+          open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        )}
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={!open}
+        aria-label="Menu dashboard"
+      >
+        <div
+          className="absolute inset-0 bg-charcoal/50 backdrop-blur-[1px] transition-opacity duration-300"
+          onClick={() => setOpen(false)}
+        />
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 w-72 max-w-[85%] bg-surface shadow-xl transition-transform duration-300 ease-out",
+            open ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Tutup menu"
+            className="absolute right-2 top-3 flex size-11 items-center justify-center rounded-btn hover:bg-cream"
+          >
+            <X className="size-5" aria-hidden="true" />
+          </button>
+          {sidebar}
         </div>
-      )}
+      </div>
 
       <main id="konten" className="min-w-0 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</main>
     </div>

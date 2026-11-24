@@ -119,3 +119,50 @@
   @media (min-width: 640px) { padding-inline: 1.5rem; }
   @media (min-width: 1024px) { padding-inline: 2rem; }
 }
+/* Transisi halus saat perpindahan halaman & elemen interaktif */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: pageEnter 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Smooth scrolling & transisi warna/bayangan default */
+html {
+  scroll-behavior: smooth;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Hormati pengaturan aksesibilitas pengguna jika mengurangi animasi */
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-enter {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  a,
+  button,
+  input,
+  select,
+  textarea {
+    transition-duration: 0ms;
+  }
+}
