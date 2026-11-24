@@ -8,10 +8,9 @@ import {
   Store, Package, Inbox, Users, BadgeCheck, Tags, Eye, Home,
 } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
+import RouteTransition from "@/components/ui/RouteTransition";
 import { cn } from "@/lib/cn";
 
-// Ikon dirujuk lewat nama (string) karena komponen tidak bisa
-// dilewatkan dari Server Component ke Client Component.
 const ICONS = {
   overview: LayoutDashboard, profile: User, cart: ShoppingCart, wishlist: Heart,
   orders: ClipboardList, address: MapPin, store: Store, products: Package,
@@ -46,16 +45,10 @@ function NavList({ items, onNavigate }) {
   );
 }
 
-/**
- * Kerangka dashboard untuk Buyer / Seller / Admin.
- * Desktop: sidebar tetap. Mobile: top bar + laci navigasi.
- * `logoutSlot`: form Server Action logout.
- */
 export default function DashboardShell({ roleLabel, userName, items, logoutSlot, children }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // Tutup menu seluler saat pindah halaman (menyesuaikan state saat render, bukan di effect).
   const [lastPath, setLastPath] = useState(pathname);
   if (lastPath !== pathname) {
     setLastPath(pathname);
@@ -94,7 +87,7 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
 
   return (
     <div className="min-h-dvh bg-canvas lg:grid lg:grid-cols-[16rem_1fr]">
-      {/* Sidebar desktop */}
+      {/* Sidebar desktop (tetap diam, tidak ikut animasi perpindahan halaman) */}
       <aside className="sticky top-0 hidden h-dvh border-r border-line bg-surface lg:block">{sidebar}</aside>
 
       {/* Top bar mobile */}
@@ -111,7 +104,7 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
         </button>
       </header>
 
-      {/* Laci mobile dengan transisi halus */}
+      {/* Laci mobile */}
       <div
         className={cn(
           "fixed inset-0 z-50 transition-opacity duration-300 lg:hidden",
@@ -144,7 +137,10 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
         </div>
       </div>
 
-      <main id="konten" className="min-w-0 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</main>
+      {/* Hanya area konten utama yang bertransisi saat pindah menu */}
+      <main id="konten" className="min-w-0 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+        <RouteTransition>{children}</RouteTransition>
+      </main>
     </div>
   );
 }
