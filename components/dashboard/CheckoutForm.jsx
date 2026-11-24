@@ -6,12 +6,7 @@ import { ServerForm, TextField, AreaField, SubmitBtn } from "./ServerForm";
 import Select from "@/components/ui/Select";
 import { checkoutAction } from "@/lib/actions/buyer";
 
-/**
- * Form checkout dengan pilihan alamat tersimpan. Memilih alamat hanya MENGISI kolom di bawahnya;
- * yang dikirim dan divalidasi server tetap isi kolom-kolom itu, lalu disimpan sebagai salinan di pesanan
- * (jadi mengubah/menghapus alamat nanti tidak mengubah pesanan yang sudah dibuat).
- */
-export default function CheckoutForm({ addresses, profile }) {
+export default function CheckoutForm({ addresses, profile, selectedIds = [], blocked = false }) {
   const initial = addresses.find((a) => a.is_default) ?? null;
   const [choice, setChoice] = useState(initial ? initial.id : "");
   const [name, setName] = useState(initial?.recipient_name ?? profile.name);
@@ -30,6 +25,8 @@ export default function CheckoutForm({ addresses, profile }) {
 
   return (
     <ServerForm action={checkoutAction}>
+      <input type="hidden" name="selectedItemIds" value={JSON.stringify(selectedIds)} />
+
       {addresses.length > 0 ? (
         <Select
           id="addressChoice"
@@ -50,7 +47,17 @@ export default function CheckoutForm({ addresses, profile }) {
       <TextField name="recipientPhone" label="Nomor telepon" required value={phone} onChange={(e) => setPhone(e.target.value)} />
       <AreaField name="shippingAddress" label="Alamat pengiriman" required rows={3} maxLength={500} value={address} onChange={(e) => setAddress(e.target.value)} hint="Tulis alamat lengkap: jalan, kelurahan, kota, kode pos." />
       <AreaField name="notes" label="Catatan untuk penjual (opsional)" rows={2} maxLength={300} />
-      <SubmitBtn size="lg" loadingLabel="Memproses…" className="w-full">Buat pesanan</SubmitBtn>
+
+      <SubmitBtn
+        size="lg"
+        loadingLabel="Memproses…"
+        disabled={selectedIds.length === 0 || blocked}
+        className="w-full"
+      >
+        {selectedIds.length === 0
+          ? "Pilih produk terlebih dahulu"
+          : `Buat pesanan (${selectedIds.length} produk)`}
+      </SubmitBtn>
     </ServerForm>
   );
 }

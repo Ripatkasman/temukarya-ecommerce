@@ -9,8 +9,8 @@ import { useToast } from "@/components/ui/Toast";
 import { setCartQuantityAction, removeCartItemAction } from "@/lib/actions/buyer";
 import { formatRupiah } from "@/lib/format";
 
-/** Satu baris keranjang: ubah jumlah dan hapus. Perubahan disimpan ke database; toast hanya untuk hasil nyata. */
-export default function CartItemRow({ item }) {
+/** Satu baris keranjang dengan checkbox seleksi checkout, ubah jumlah, dan hapus. */
+export default function CartItemRow({ item, checked = false, onToggle }) {
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [qty, setQty] = useState(item.quantity);
@@ -25,7 +25,7 @@ export default function CartItemRow({ item }) {
       fd.set("quantity", String(next));
       const res = await setCartQuantityAction(null, fd);
       if (!res?.ok) {
-        setQty(previous); // kembalikan jika server menolak
+        setQty(previous);
         toast.error(res?.message ?? "Jumlah belum bisa diubah.");
       }
     });
@@ -42,10 +42,21 @@ export default function CartItemRow({ item }) {
   }
 
   return (
-    <li className="flex gap-4 rounded-card border border-line bg-surface p-3 sm:p-4">
+    <li className={`flex items-start gap-3 rounded-card border bg-surface p-3 transition-colors sm:gap-4 sm:p-4 ${checked ? "border-primary/60 bg-primary-soft/20" : "border-line"}`}>
+      <div className="pt-1">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={() => onToggle?.(item.itemId)}
+          aria-label={`Pilih ${item.name} untuk checkout`}
+          className="size-5 cursor-pointer rounded border-line text-primary accent-primary focus:ring-primary"
+        />
+      </div>
+
       <Link href={`/products/${item.productId}`} className="size-20 shrink-0 overflow-hidden rounded-btn border border-line sm:size-24" tabIndex={-1}>
         <ProductImage src={item.imageUrl} alt={item.name} className="size-full" />
       </Link>
+
       <div className="min-w-0 flex-1">
         <Link href={`/products/${item.productId}`} className="text-card-title line-clamp-2 hover:text-primary">{item.name}</Link>
         <p className="text-caption text-muted-strong">{item.storeName}</p>
@@ -57,7 +68,7 @@ export default function CartItemRow({ item }) {
           <p className="mt-1 flex items-center gap-1.5 text-caption font-medium text-warning-strong"><TriangleAlert className="size-3.5" aria-hidden="true" />Stok tinggal {item.stock}. Kurangi jumlahnya.</p>
         )}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex h-11 items-center rounded-btn border border-line">
+          <div className="flex h-11 items-center rounded-btn border border-line bg-surface">
             <button type="button" onClick={() => change(qty - 1)} disabled={pending || qty <= 1} aria-label={`Kurangi jumlah ${item.name}`} className="flex size-11 items-center justify-center rounded-l-btn hover:bg-cream disabled:opacity-40">
               <Minus className="size-4" aria-hidden="true" />
             </button>
