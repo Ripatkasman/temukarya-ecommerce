@@ -50,7 +50,7 @@ export default async function HomePage() {
     listCategories({ popularFirst: true, limit: 6, onlyWithProducts: true }),
     listRecommendedStores(3),
   ]);
-  const heroTiles = (isBuyer ? newest : popular).slice(0, 3);
+  const heroTiles = (isBuyer ? newest : popular).slice(0, 6);
   const wished = isBuyer ? await getWishlistIds(viewer.id) : new Set();
   const renderActions = (p) => <AddToCart product={p} viewer={viewer} />;
   const renderOverlay = (p) => <WishlistToggle product={p} viewer={viewer} wishlisted={wished.has(p.id)} />;
@@ -83,19 +83,67 @@ export default async function HomePage() {
           </div>
 
           {heroTiles.length > 0 && (
-            <ul aria-label="Produk pilihan" className="grid grid-cols-2 gap-3 sm:gap-4">
-              {heroTiles.map((p, i) => (
-                <li key={p.id} className={i === 0 ? "row-span-2" : i === 2 ? "sm:translate-y-0" : ""}>
-                  <Link href={`/products/${p.id}`} className="group flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface">
-                    <ProductImage src={p.image_url} alt={p.name} ratio={i === 0 ? "aspect-[4/5]" : "aspect-[4/3]"} />
-                    <div className="p-3">
-                      <p className="line-clamp-1 text-sm font-semibold group-hover:text-primary">{p.name}</p>
-                      <PriceDisplay value={p.price} size="sm" />
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <div aria-label="Produk pilihan" className="grid grid-cols-3 items-center gap-3 sm:gap-4">
+              {/* Kolom 1: 2 Foto Produk (Offset sedikit ke bawah untuk kesan editorial) */}
+              <ul className="space-y-3 pt-6 sm:space-y-4">
+                {heroTiles.slice(0, 2).map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={`/products/${p.id}`}
+                      aria-label={`Lihat produk ${p.name}`}
+                      className="group block overflow-hidden rounded-card border border-line bg-surface shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                    >
+                      <ProductImage
+                        src={p.image_url}
+                        alt={p.name}
+                        ratio="aspect-[3/4]"
+                        className="transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Kolom 2: 2 Foto Produk (Posisi paling atas sebagai fokus utama) */}
+              <ul className="space-y-3 sm:space-y-4">
+                {heroTiles.slice(2, 4).map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={`/products/${p.id}`}
+                      aria-label={`Lihat produk ${p.name}`}
+                      className="group block overflow-hidden rounded-card border border-line bg-surface shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                    >
+                      <ProductImage
+                        src={p.image_url}
+                        alt={p.name}
+                        ratio="aspect-[3/4]"
+                        className="transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Kolom 3: 2 Foto Produk (Offset sedikit lebih rendah untuk ritme visual) */}
+              <ul className="space-y-3 pt-10 sm:space-y-4">
+                {heroTiles.slice(4, 6).map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={`/products/${p.id}`}
+                      aria-label={`Lihat produk ${p.name}`}
+                      className="group block overflow-hidden rounded-card border border-line bg-surface shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                    >
+                      <ProductImage
+                        src={p.image_url}
+                        alt={p.name}
+                        ratio="aspect-[3/4]"
+                        className="transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       </section>
