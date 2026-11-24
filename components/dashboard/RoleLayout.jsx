@@ -1,7 +1,5 @@
 import DashboardShell from "./DashboardShell";
-import SubmitButton from "@/components/ui/SubmitButton";
-import { LogOut } from "lucide-react";
-import { logoutAction } from "@/lib/actions/auth";
+import LogoutConfirmButton from "@/components/auth/LogoutConfirmButton";
 
 export const NAV = {
   buyer: [
@@ -40,12 +38,12 @@ export default function RoleLayout({ role, user, children }) {
       userName={user.fullName}
       items={NAV[role]}
       logoutSlot={
-        <form action={logoutAction}>
-          <SubmitButton variant="ghost" className="w-full justify-start">
-            <LogOut className="size-5" aria-hidden="true" />
-            Keluar
-          </SubmitButton>
-        </form>
+        <LogoutConfirmButton
+          variant="ghost"
+          size="md"
+          iconClassName="size-5"
+          fullWidth
+        />
       }
     >
       {children}
