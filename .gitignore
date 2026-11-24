@@ -14,3 +14,4 @@ tests
 # Gambar unggahan pengguna (folder dipertahankan lewat .gitkeep)
 /uploads/*
 !/uploads/.gitkeep
+"AGENT.md" 
