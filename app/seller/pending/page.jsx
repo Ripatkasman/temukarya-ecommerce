@@ -34,10 +34,16 @@ export default async function SellerStatusPage() {
       </header>
       <main id="konten" className="container-page py-12 md:py-16">
         <div className="mx-auto max-w-xl rounded-card border border-line bg-surface p-6 text-center sm:p-10">
-          <span className={`mx-auto flex size-16 items-center justify-center rounded-full ${rejected ? "bg-error-soft text-error-strong" : "bg-warning-soft text-warning-strong"}`}>
+          <span
+            className={`mx-auto flex size-16 items-center justify-center rounded-full ${
+              rejected ? "bg-error-soft text-error-strong" : "bg-warning-soft text-warning-strong"
+            }`}
+          >
             <Icon className="size-8" aria-hidden="true" />
           </span>
-          <div className="mt-4 flex justify-center"><SellerStatusBadge status={user.sellerStatus} /></div>
+          <div className="mt-4 flex justify-center">
+            <SellerStatusBadge status={user.sellerStatus} />
+          </div>
           <h1 className="text-page-title mt-4">
             {rejected ? "Pendaftaran toko belum dapat disetujui" : "Akun Anda sedang ditinjau."}
           </h1>
@@ -46,6 +52,18 @@ export default async function SellerStatusPage() {
               ? "Pendaftaran toko Anda belum dapat disetujui. Anda dapat menghapus akun ini, lalu mendaftar kembali dengan data yang diperbarui."
               : "Terima kasih telah bergabung dengan TemuKarya. Akun Anda sedang ditinjau oleh tim Admin. Dashboard toko akan tersedia setelah proses verifikasi selesai."}
           </p>
+
+          {rejected && user.rejectionReason && (
+            <div className="mt-5 rounded-card border border-error/30 bg-error-soft/70 p-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-error-strong">
+                Alasan Penolakan dari Admin
+              </p>
+              <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-charcoal">
+                {user.rejectionReason}
+              </p>
+            </div>
+          )}
+
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button href="/products" variant="outline">Lihat produk</Button>
             {rejected && <DeleteAccountButton />}
