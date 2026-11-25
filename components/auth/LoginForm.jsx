@@ -8,7 +8,6 @@ import PasswordInput from "@/components/ui/PasswordInput";
 import SubmitButton from "@/components/ui/SubmitButton";
 import { loginAction } from "@/lib/actions/auth";
 
-/** Form login. `next` adalah tujuan lanjutan yang sudah divalidasi di server. */
 export default function LoginForm({ next = "" }) {
   const [state, formAction] = useActionState(loginAction, null);
   const errors = state?.errors ?? {};
@@ -33,14 +32,24 @@ export default function LoginForm({ next = "" }) {
         error={errors.email}
         placeholder="nama@email.com"
       />
-      <PasswordInput
-        id="password"
-        name="password"
-        label="Kata sandi"
-        autoComplete="current-password"
-        required
-        error={errors.password}
-      />
+      <div className="space-y-1.5">
+        <PasswordInput
+          id="password"
+          name="password"
+          label="Kata sandi"
+          autoComplete="current-password"
+          required
+          error={errors.password}
+        />
+        <div className="flex justify-end">
+          <Link
+            href="/forgot-password"
+            className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            Lupa kata sandi?
+          </Link>
+        </div>
+      </div>
       <SubmitButton size="lg" loadingLabel="Memeriksa…" className="w-full">Masuk</SubmitButton>
       <p className="text-center text-sm text-muted-strong">
         Belum punya akun?{" "}
