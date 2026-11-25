@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Menu, X, LayoutDashboard, User, ShoppingCart, Heart, ClipboardList, MapPin,
-  Store, Package, Inbox, Users, BadgeCheck, Tags, Eye, Home,
+  Store, Package, Inbox, Users, BadgeCheck, Tags, Eye, Home, Bell,
 } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import RouteTransition from "@/components/ui/RouteTransition";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/cn";
 const ICONS = {
   overview: LayoutDashboard, profile: User, cart: ShoppingCart, wishlist: Heart,
   orders: ClipboardList, address: MapPin, store: Store, products: Package,
-  incoming: Inbox, users: Users, verify: BadgeCheck, categories: Tags, monitor: Eye,
+  incoming: Inbox, notifications: Bell, users: Users, verify: BadgeCheck, categories: Tags, monitor: Eye,
 };
 
 function NavList({ items, onNavigate }) {
@@ -31,12 +31,24 @@ function NavList({ items, onNavigate }) {
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-11 items-center gap-3 rounded-btn px-3 text-sm font-medium transition-colors",
+                "flex min-h-11 items-center justify-between gap-3 rounded-btn px-3 text-sm font-medium transition-colors",
                 active ? "bg-primary text-white" : "text-charcoal hover:bg-cream"
               )}
             >
-              <Icon className="size-5 shrink-0" aria-hidden="true" />
-              {item.label}
+              <span className="flex items-center gap-3">
+                <Icon className="size-5 shrink-0" aria-hidden="true" />
+                {item.label}
+              </span>
+              {item.badge > 0 && (
+                <span
+                  className={cn(
+                    "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-bold",
+                    active ? "bg-white text-primary" : "bg-error text-white"
+                  )}
+                >
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              )}
             </Link>
           </li>
         );
@@ -87,10 +99,8 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
 
   return (
     <div className="min-h-dvh bg-canvas lg:grid lg:grid-cols-[16rem_1fr]">
-      {/* Sidebar desktop (tetap diam, tidak ikut animasi perpindahan halaman) */}
       <aside className="sticky top-0 hidden h-dvh border-r border-line bg-surface lg:block">{sidebar}</aside>
 
-      {/* Top bar mobile */}
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-surface px-4 lg:hidden">
         <BrandLogo markClassName="size-8" />
         <button
@@ -104,7 +114,6 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
         </button>
       </header>
 
-      {/* Laci mobile */}
       <div
         className={cn(
           "fixed inset-0 z-50 transition-opacity duration-300 lg:hidden",
@@ -137,7 +146,6 @@ export default function DashboardShell({ roleLabel, userName, items, logoutSlot,
         </div>
       </div>
 
-      {/* Hanya area konten utama yang bertransisi saat pindah menu */}
       <main id="konten" className="min-w-0 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
         <RouteTransition>{children}</RouteTransition>
       </main>

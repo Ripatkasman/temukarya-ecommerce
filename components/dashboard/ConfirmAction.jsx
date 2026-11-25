@@ -11,12 +11,30 @@ import { useToast } from "@/components/ui/Toast";
  * Tanpa `confirmTitle`, aksi langsung dijalankan.
  */
 export default function ConfirmAction({
-  action, fields = {}, label, variant = "outline", size = "sm", className,
-  confirmTitle, confirmDescription, confirmLabel, destructive = false, ariaLabel,
+  action,
+  fields = {},
+  label,
+  variant,
+  size = "sm",
+  className,
+  confirmTitle,
+  confirmDescription,
+  confirmLabel,
+  destructive = false,
+  ariaLabel,
 }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  // Jika aksi bersifat destructive (hapus/nonaktifkan) dan tidak ada variant eksplisit selain outline,
+  // otomatis gunakan tombol merah ("danger") agar seragam di seluruh halaman.
+  const resolvedVariant =
+    variant && variant !== "outline"
+      ? variant
+      : destructive
+      ? "danger"
+      : variant ?? "outline";
 
   function run() {
     startTransition(async () => {
@@ -35,7 +53,14 @@ export default function ConfirmAction({
 
   return (
     <>
-      <Button variant={variant} size={size} className={className} aria-label={ariaLabel} loading={!confirmTitle && pending} onClick={() => (confirmTitle ? setOpen(true) : run())}>
+      <Button
+        variant={resolvedVariant}
+        size={size}
+        className={className}
+        aria-label={ariaLabel}
+        loading={!confirmTitle && pending}
+        onClick={() => (confirmTitle ? setOpen(true) : run())}
+      >
         {label}
       </Button>
       {confirmTitle && (
@@ -52,4 +77,4 @@ export default function ConfirmAction({
       )}
     </>
   );
-}
+} 

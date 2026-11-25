@@ -1,5 +1,6 @@
 import DashboardShell from "./DashboardShell";
 import LogoutConfirmButton from "@/components/auth/LogoutConfirmButton";
+import { getUnreadNotificationCount } from "@/lib/repositories/notifications";
 
 export const NAV = {
   buyer: [
@@ -9,12 +10,14 @@ export const NAV = {
     { href: "/buyer/wishlist", label: "Favorit", icon: "wishlist" },
     { href: "/buyer/cart", label: "Keranjang", icon: "cart" },
     { href: "/buyer/orders", label: "Riwayat Pesanan", icon: "orders" },
+    { href: "/buyer/notifications", label: "Notifikasi", icon: "notifications" },
   ],
   seller: [
     { href: "/seller", label: "Ringkasan", icon: "overview", exact: true },
     { href: "/seller/store", label: "Toko Saya", icon: "store" },
     { href: "/seller/products", label: "Produk Saya", icon: "products" },
     { href: "/seller/orders", label: "Pesanan Masuk", icon: "incoming" },
+    { href: "/seller/notifications", label: "Notifikasi", icon: "notifications" },
   ],
   admin: [
     { href: "/admin", label: "Ringkasan", icon: "overview", exact: true },
@@ -31,12 +34,21 @@ const LABELS = { buyer: "Dashboard Pembeli", seller: "Dashboard Penjual", admin:
  * Kerangka dashboard per role. `user` sudah lolos requireRole() di layout pemanggil;
  * navigasi di sini hanya tampilan, penjagaan sebenarnya ada di server.
  */
-export default function RoleLayout({ role, user, children }) {
+export default async function RoleLayout({ role, user, children }) {
+  const unreadCount =
+    role === "buyer" || role === "seller"
+      ? await getUnreadNotificationCount(user.id)
+      : 0;
+
+  const items = NAV[role].map((item) =>
+    item.icon === "notifications" ? { ...item, badge: unreadCount } : item
+  );
+
   return (
     <DashboardShell
       roleLabel={LABELS[role]}
       userName={user.fullName}
-      items={NAV[role]}
+      items={items}
       logoutSlot={
         <LogoutConfirmButton
           variant="ghost"
