@@ -1,12 +1,13 @@
 import ProductGrid from "@/components/commerce/ProductGrid";
 import ProductFilters from "@/components/commerce/ProductFilters";
+import StoreCard from "@/components/commerce/StoreCard";
 import AddToCart from "@/components/commerce/AddToCart";
 import WishlistToggle from "@/components/commerce/WishlistToggle";
 import { getWishlistIds } from "@/lib/repositories/wishlist";
 import Pagination from "@/components/ui/Pagination";
 import { getCurrentUser } from "@/lib/auth";
 import { parseProductFilters } from "@/lib/query";
-import { listProducts, listCategories, SORT_OPTIONS } from "@/lib/repositories/catalog";
+import { listProducts, listCategories, searchStores, SORT_OPTIONS } from "@/lib/repositories/catalog";
 
 export const metadata = { title: "Jelajahi Produk" };
 export const dynamic = "force-dynamic";
@@ -16,9 +17,10 @@ export default async function ProductsPage({ searchParams }) {
   const { q, categoryId, minPrice, maxPrice, minRating, inStock, sort, page } = parseProductFilters(sp, SORT_OPTIONS.map((o) => o.value));
 
   const viewer = await getCurrentUser();
-  const [categories, result, wished] = await Promise.all([
+  const [categories, result, matchedStores, wished] = await Promise.all([
     listCategories(),
     listProducts({ q, categoryId, minPrice, maxPrice, minRating, inStock, sort, page }),
+    q ? searchStores(q, 5) : Promise.resolve([]),
     viewer?.role === "buyer" ? getWishlistIds(viewer.id) : Promise.resolve(new Set()),
   ]);
 
@@ -38,6 +40,20 @@ export default async function ProductsPage({ searchParams }) {
       </header>
 
       <ProductFilters categories={categories} values={{ q, category: categoryId, min: minPrice, max: maxPrice, rating: minRating, stok: inStock, sort }} />
+
+      {/* Hasil pencarian toko yang cocok dengan kata kunci */}
+      {matchedStores.length > 0 && (
+        <section aria-labelledby="toko-cocok" className="mt-6 space-y-3">
+          <h2 id="toko-cocok" className="text-sm font-semibold text-muted-strong">
+            Toko terkait ({matchedStores.length})
+          </h2>
+          <div className="space-y-3">
+            {matchedStores.map((store) => (
+              <StoreCard key={store.id} store={store} variant="horizontal" />
+            ))}
+          </div>
+        </section>
+      )}
 
       <p className="mb-4 mt-6 text-sm text-muted-strong" aria-live="polite">
         {result.total === 0
