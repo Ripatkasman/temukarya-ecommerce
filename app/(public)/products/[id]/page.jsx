@@ -110,7 +110,13 @@ export default async function ProductDetailPage({ params }) {
         ) : (
           <ul className="grid gap-4 md:grid-cols-2">
             {reviews.map((r) => (
-              <li key={r.id}><ReviewCard review={r} /></li>
+              <li key={r.id}>
+                <ReviewCard
+                  review={r}
+                  canDelete={viewer?.role === "admin"}
+                  productId={product.id}
+                />
+              </li>
             ))}
           </ul>
         )}
