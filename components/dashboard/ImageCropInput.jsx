@@ -18,10 +18,13 @@ export default function ImageCropInput({
 }) {
   const fileInputRef = useRef(null);
   const imgRef = useRef(null);
+  const rawBlobRef = useRef(null);
+  const previewBlobRef = useRef(null);
 
   const [cropOpen, setCropOpen] = useState(false);
-  const [rawSrc, setRawSrc] = useState(null);
+  const [rawSrc, setRawSrc] = useState(currentImageUrl);
   const [rawFileName, setRawFileName] = useState("produk.webp");
+  const [loadingReCrop, setLoadingReCrop] = useState(false);
 
   const [aspect, setAspect] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -34,10 +37,10 @@ export default function ImageCropInput({
 
   useEffect(() => {
     return () => {
-      if (rawSrc && rawSrc.startsWith("blob:")) URL.revokeObjectURL(rawSrc);
-      if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+      if (rawBlobRef.current) URL.revokeObjectURL(rawBlobRef.current);
+      if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
     };
-  }, [rawSrc, previewUrl]);
+  }, []);
 
   function handleFileChange(e) {
     const file = e.target.files?.[0];
@@ -50,9 +53,46 @@ export default function ImageCropInput({
       return;
     }
 
+    if (rawBlobRef.current) {
+      URL.revokeObjectURL(rawBlobRef.current);
+    }
+
     const objectUrl = URL.createObjectURL(file);
+    rawBlobRef.current = objectUrl;
     setRawSrc(objectUrl);
     setRawFileName(file.name.replace(/\.[^.]+$/, "") + ".webp");
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+    setCropOpen(true);
+  }
+
+  async function handleOpenReCrop() {
+    if (!rawSrc) return;
+    setErrorMsg("");
+
+    // Jika rawSrc adalah URL eksternal (http/https), konversi ke blob lokal dulu agar canvas.toBlob tidak kena CORS SecurityError
+    if (rawSrc.startsWith("http://") || rawSrc.startsWith("https://")) {
+      setLoadingReCrop(true);
+      try {
+        const res = await fetch(rawSrc, { mode: "cors" });
+        if (!res.ok) throw new Error("Gagal memuat gambar");
+        const blob = await res.blob();
+
+        if (rawBlobRef.current) {
+          URL.revokeObjectURL(rawBlobRef.current);
+        }
+        const safeBlobUrl = URL.createObjectURL(blob);
+        rawBlobRef.current = safeBlobUrl;
+        setRawSrc(safeBlobUrl);
+      } catch {
+        setErrorMsg("Gambar eksternal tidak dapat dipotong ulang karena batasan akses server. Silakan pilih file gambar baru.");
+        setLoadingReCrop(false);
+        return;
+      } finally {
+        setLoadingReCrop(false);
+      }
+    }
+
     setZoom(1);
     setOffset({ x: 0, y: 0 });
     setCropOpen(true);
@@ -78,7 +118,6 @@ export default function ImageCropInput({
 
   function handleCancelCrop() {
     setCropOpen(false);
-    // Jika belum pernah ada hasil crop baru, kosongkan input file
     if (!previewUrl || previewUrl === currentImageUrl) {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -88,11 +127,9 @@ export default function ImageCropInput({
     const img = imgRef.current;
     if (!img) return;
 
-    // Ukuran frame pratinjau di layar (lebar 320px)
     const frameW = 320;
     const frameH = Math.round(frameW / aspect);
 
-    // Output resolusi tinggi & tajam untuk katalog (800px)
     const outW = 800;
     const outH = Math.round(outW / aspect);
 
@@ -101,11 +138,9 @@ export default function ImageCropInput({
     canvas.height = outH;
     const ctx = canvas.getContext("2d");
 
-    // Latar belakang putih bersih jika gambar digeser keluar tepi
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, outW, outH);
 
-    // Hitung skala dasar gambar agar menutupi frame (cover)
     const baseScale = Math.max(frameW / img.naturalWidth, frameH / img.naturalHeight);
     const totalScale = baseScale * zoom;
 
@@ -118,29 +153,39 @@ export default function ImageCropInput({
     const ratio = outW / frameW;
     ctx.drawImage(img, drawX * ratio, drawY * ratio, drawW * ratio, drawH * ratio);
 
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        if (blob.size > 2 * 1024 * 1024) {
-          setErrorMsg("Ukuran hasil gambar melebihi 2 MB. Coba perkecil zoom atau pilih foto lain.");
-          return;
-        }
+    try {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return;
+          if (blob.size > 2 * 1024 * 1024) {
+            setErrorMsg("Ukuran hasil gambar melebihi 2 MB. Coba perkecil zoom atau pilih foto lain.");
+            return;
+          }
 
-        const croppedFile = new File([blob], rawFileName, { type: "image/webp" });
-        const dt = new DataTransfer();
-        dt.items.add(croppedFile);
+          const croppedFile = new File([blob], rawFileName, { type: "image/webp" });
+          const dt = new DataTransfer();
+          dt.items.add(croppedFile);
 
-        if (fileInputRef.current) {
-          fileInputRef.current.files = dt.files;
-        }
+          if (fileInputRef.current) {
+            fileInputRef.current.files = dt.files;
+          }
 
-        const nextPreview = URL.createObjectURL(blob);
-        setPreviewUrl(nextPreview);
-        setCropOpen(false);
-      },
-      "image/webp",
-      0.9
-    );
+          if (previewBlobRef.current) {
+            URL.revokeObjectURL(previewBlobRef.current);
+          }
+
+          const nextPreview = URL.createObjectURL(blob);
+          previewBlobRef.current = nextPreview;
+          setPreviewUrl(nextPreview);
+          setCropOpen(false);
+        },
+        "image/webp",
+        0.9
+      );
+    } catch {
+      setErrorMsg("Gagal memproses potongan gambar. Silakan unggah ulang file gambar dari perangkat Anda.");
+      setCropOpen(false);
+    }
   }
 
   const frameHeight = Math.round(320 / aspect);
@@ -182,11 +227,12 @@ export default function ImageCropInput({
             {rawSrc && (
               <button
                 type="button"
-                onClick={() => setCropOpen(true)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                disabled={loadingReCrop}
+                onClick={handleOpenReCrop}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
               >
                 <Crop className="size-3.5" aria-hidden="true" />
-                Potong ulang
+                {loadingReCrop ? "Memuat gambar..." : "Potong ulang"}
               </button>
             )}
           </div>
@@ -250,6 +296,7 @@ export default function ImageCropInput({
                 ref={imgRef}
                 src={rawSrc}
                 alt="Area potong gambar"
+                crossOrigin="anonymous"
                 draggable={false}
                 style={{
                   transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
