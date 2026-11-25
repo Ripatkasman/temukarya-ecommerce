@@ -2,45 +2,75 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X, LayoutDashboard, ShoppingCart } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
 const PUBLIC_LINKS = [
-  { href: "/", label: "Beranda" },
+  { href: "/", label: "Beranda", exact: true },
   { href: "/products", label: "Jelajahi Produk" },
   { href: "/about", label: "Tentang TemuKarya" },
 ];
 
 /**
  * Navbar publik.
- * `user` (opsional): { fullname, dashboardHref }. Jika ada, tampilkan tautan dashboard
- * dan `logoutSlot` (mis. form dengan Server Action logout) menggantikan tombol Masuk/Daftar.
+ * `user` (opsional): { fullName, dashboardHref }. Jika ada, tampilkan tautan dashboard
+ * dan `logoutSlot` menggantikan tombol Masuk/Daftar.
  */
 export default function Navbar({ user = null, logoutSlot = null, cartCount = null, className }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  const isActive = (link) =>
+    link.exact ? pathname === link.href : pathname === link.href || pathname.startsWith(`${link.href}/`);
 
   return (
     <header className={cn("sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur", className)}>
       <div className="container-page flex h-16 items-center justify-between gap-4">
         <BrandLogo />
 
-        <nav aria-label="Navigasi utama" className="hidden items-center gap-1 md:flex">
-          {PUBLIC_LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className="rounded-btn px-3.5 py-2 text-sm font-medium text-charcoal hover:bg-cream hover:text-primary">
-              {l.label}
-            </Link>
-          ))}
+        {/* Navigasi Desktop dengan penanda tab hijau tua solid */}
+        <nav aria-label="Navigasi utama" className="hidden h-full items-end gap-1 pt-2.5 md:flex">
+          {PUBLIC_LINKS.map((l) => {
+            const active = isActive(l);
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex h-full items-center rounded-t-btn px-4 text-sm transition-colors",
+                  active
+                    ? "bg-primary font-semibold text-white shadow-sm"
+                    : "font-medium text-charcoal hover:bg-cream hover:text-primary"
+                )}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
           {user ? (
             <>
               {cartCount !== null && (
-                <Link href="/buyer/cart" aria-label={`Keranjang, ${cartCount} barang`} className="relative flex size-11 items-center justify-center rounded-btn hover:bg-cream">
+                <Link
+                  href="/buyer/cart"
+                  aria-label={`Keranjang, ${cartCount} barang`}
+                  className="relative flex size-11 items-center justify-center rounded-btn hover:bg-cream"
+                >
                   <ShoppingCart className="size-5" aria-hidden="true" />
-                  {cartCount > 0 && <span aria-hidden="true" className="absolute right-0.5 top-0.5 flex min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[0.6875rem] font-bold text-charcoal">{cartCount}</span>}
+                  {cartCount > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute right-0.5 top-0.5 flex min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[0.6875rem] font-bold text-charcoal"
+                    >
+                      {cartCount}
+                    </span>
+                  )}
                 </Link>
               )}
               <Button href={user.dashboardHref} variant="secondary" size="sm">
@@ -72,11 +102,25 @@ export default function Navbar({ user = null, logoutSlot = null, cartCount = nul
       {open && (
         <div id="mobile-menu" className="border-t border-line bg-canvas md:hidden">
           <nav aria-label="Navigasi seluler" className="container-page flex flex-col gap-1 py-3">
-            {PUBLIC_LINKS.map((l) => (
-              <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="flex min-h-11 items-center rounded-btn px-3 text-base font-medium hover:bg-cream">
-                {l.label}
-              </Link>
-            ))}
+            {PUBLIC_LINKS.map((l) => {
+              const active = isActive(l);
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-11 items-center rounded-btn px-3 text-base transition-colors",
+                    active
+                      ? "bg-primary font-semibold text-white"
+                      : "font-medium text-charcoal hover:bg-cream"
+                  )}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
             <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
               {user ? (
                 <>
