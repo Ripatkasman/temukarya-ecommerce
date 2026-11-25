@@ -1,13 +1,11 @@
 -- =====================================================================
 -- TemuKarya - Database Schema (PostgreSQL)
--- Simpan di /database/schema.sql (di LUAR folder /app).
 -- Urutan menjalankan: 1) schema.sql  2) seed.sql
--- Aman dijalankan ulang pada database kosong maupun yang sudah berisi
--- (semua tabel lama dihapus lebih dulu).
 -- =====================================================================
 
 -- ---------- Reset ----------
 DROP VIEW     IF EXISTS v_order_totals CASCADE;
+DROP TABLE    IF EXISTS notifications  CASCADE;
 DROP TABLE    IF EXISTS reviews        CASCADE;
 DROP TABLE    IF EXISTS order_items    CASCADE;
 DROP TABLE    IF EXISTS store_orders   CASCADE;
@@ -35,27 +33,28 @@ $$ LANGUAGE plpgsql;
 
 -- =====================================================================
 -- 1. users
--- Satu tabel untuk Admin, Seller, Buyer.
--- seller_status SENGAJA tanpa DEFAULT: registrasi seller wajib mengisi
--- 'pending' secara eksplisit; lupa mengisi = error, bukan celah.
 -- =====================================================================
 CREATE TABLE users (
-  id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  full_name      VARCHAR(100) NOT NULL,
-  email          VARCHAR(255) NOT NULL,
-  password_hash  VARCHAR(255) NOT NULL,            -- bcrypt hash, bukan password asli
-  role           VARCHAR(10)  NOT NULL,
-  seller_status  VARCHAR(10),                      -- hanya untuk role 'seller'
-  phone          VARCHAR(20),
-  reviewed_by    BIGINT REFERENCES users(id) ON DELETE SET NULL,  -- admin yang memutuskan
-  reviewed_at    TIMESTAMPTZ,                      -- waktu keputusan approve/reject
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  id                    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  full_name             VARCHAR(100) NOT NULL,
+  email                 VARCHAR(255) NOT NULL,
+  password_hash         VARCHAR(255) NOT NULL,
+  recovery_code_hash    VARCHAR(255),
+  role                  VARCHAR(10)  NOT NULL,
+  seller_status         VARCHAR(10),
+  rejection_reason      TEXT,
+  phone                 VARCHAR(20),
+  is_active             BOOLEAN      NOT NULL DEFAULT TRUE,
+  deletion_requested_at TIMESTAMPTZ,
+  deletion_reason       TEXT,
+  reviewed_by           BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at           TIMESTAMPTZ,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   CONSTRAINT chk_users_role CHECK (role IN ('admin','seller','buyer')),
   CONSTRAINT chk_users_seller_status
     CHECK (seller_status IN ('pending','approved','rejected')),
-  -- seller wajib punya status; admin/buyer tidak boleh punya status seller
   CONSTRAINT chk_users_status_matches_role CHECK (
     (role = 'seller' AND seller_status IS NOT NULL) OR
     (role <> 'seller' AND seller_status IS NULL)
@@ -64,16 +63,11 @@ CREATE TABLE users (
   CONSTRAINT chk_users_name_not_blank  CHECK (BTRIM(full_name) <> ''),
   CONSTRAINT chk_users_email_not_blank CHECK (BTRIM(email) <> '')
 );
--- Email unik tanpa peka huruf besar-kecil
 CREATE UNIQUE INDEX uq_users_email_lower ON users (LOWER(email));
 CREATE INDEX idx_users_role_status ON users (role, seller_status);
 CREATE TRIGGER trg_users_updated BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- Pengaman di level database (selain pengecekan di aplikasi):
---   * role tidak boleh berubah setelah akun dibuat (mencegah "naik jabatan" menjadi admin),
---   * seller_status hanya boleh pending -> approved atau pending -> rejected.
--- Seed boleh mengisi status langsung saat INSERT; trigger ini hanya berlaku untuk UPDATE.
 CREATE FUNCTION enforce_user_integrity() RETURNS trigger AS $$
 BEGIN
   IF NEW.role IS DISTINCT FROM OLD.role THEN
@@ -92,7 +86,7 @@ CREATE TRIGGER trg_users_integrity BEFORE UPDATE OF role, seller_status ON users
   FOR EACH ROW EXECUTE FUNCTION enforce_user_integrity();
 
 -- =====================================================================
--- 2. stores (satu seller = satu toko)
+-- 2. stores
 -- =====================================================================
 CREATE TABLE stores (
   id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -108,7 +102,7 @@ CREATE TRIGGER trg_stores_updated BEFORE UPDATE ON stores
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- =====================================================================
--- 3. categories (dikelola Admin)
+-- 3. categories
 -- =====================================================================
 CREATE TABLE categories (
   id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -124,9 +118,6 @@ CREATE TRIGGER trg_categories_updated BEFORE UPDATE ON categories
 
 -- =====================================================================
 -- 4. products
--- Semua field wajib (sesuai PDF): nama, deskripsi, harga, stok, gambar, kategori.
--- Kepemilikan: selalu pakai WHERE seller_id = $sesi pada query ubah/hapus.
--- category_id ON DELETE RESTRICT -> kategori yang dipakai tidak bisa dihapus.
 -- =====================================================================
 CREATE TABLE products (
   id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -154,7 +145,7 @@ CREATE TRIGGER trg_products_updated BEFORE UPDATE ON products
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- =====================================================================
--- 5. carts & cart_items (satu buyer = satu cart aktif)
+-- 5. carts & cart_items
 -- =====================================================================
 CREATE TABLE carts (
   id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -179,12 +170,12 @@ CREATE TRIGGER trg_cart_items_updated BEFORE UPDATE ON cart_items
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- =====================================================================
--- 6. addresses (OPSIONAL - fitur alamat pengiriman)
+-- 6. addresses
 -- =====================================================================
 CREATE TABLE addresses (
   id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   buyer_id        BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  label           VARCHAR(50)  NOT NULL,            -- mis. "Rumah", "Kantor"
+  label           VARCHAR(50)  NOT NULL,
   recipient_name  VARCHAR(100) NOT NULL,
   phone           VARCHAR(20)  NOT NULL,
   full_address    TEXT         NOT NULL,
@@ -194,14 +185,12 @@ CREATE TABLE addresses (
   CONSTRAINT chk_address_not_blank CHECK (BTRIM(full_address) <> '')
 );
 CREATE INDEX idx_addresses_buyer ON addresses (buyer_id);
--- maksimal satu alamat default per buyer
 CREATE UNIQUE INDEX uq_addresses_one_default ON addresses (buyer_id) WHERE is_default;
 CREATE TRIGGER trg_addresses_updated BEFORE UPDATE ON addresses
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- =====================================================================
--- 7. wishlist_items (OPSIONAL - wishlist, dipisah dari cart)
--- Disederhanakan: satu baris = satu produk favorit milik satu buyer.
+-- 7. wishlist_items
 -- =====================================================================
 CREATE TABLE wishlist_items (
   buyer_id    BIGINT NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
@@ -211,20 +200,13 @@ CREATE TABLE wishlist_items (
 );
 
 -- =====================================================================
--- 8. orders (induk) -> store_orders (per toko) -> order_items
--- Pembayaran DISIMULASIKAN (tanpa payment gateway); 'awaiting_payment'
--- bukan berarti sudah dibayar. Status induk diturunkan dari store_orders,
--- tidak disimpan. Total juga dihitung (lihat view v_order_totals).
--- Riwayat order dilindungi: menghapus user/toko/produk TIDAK menghapus order
--- (FK memakai SET NULL + snapshot nama).
+-- 8. orders, store_orders, order_items
 -- =====================================================================
 CREATE TABLE orders (
   id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   buyer_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
   recipient_name   VARCHAR(100) NOT NULL,
   recipient_phone  VARCHAR(20)  NOT NULL,
-  -- NOT NULL: form checkout wajib punya isian alamat (teks) walaupun
-  -- fitur addresses belum dipakai. Ini snapshot saat checkout.
   shipping_address TEXT         NOT NULL,
   notes            TEXT,
   created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -239,7 +221,7 @@ CREATE TABLE store_orders (
   id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   order_id            BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   seller_id           BIGINT REFERENCES users(id) ON DELETE SET NULL,
-  store_name          VARCHAR(100) NOT NULL,           -- snapshot nama toko
+  store_name          VARCHAR(100) NOT NULL,
   fulfillment_status  VARCHAR(20)  NOT NULL DEFAULT 'awaiting_payment',
   created_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   updated_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -251,11 +233,6 @@ CREATE INDEX idx_store_orders_seller ON store_orders (seller_id, fulfillment_sta
 CREATE TRIGGER trg_store_orders_updated BEFORE UPDATE ON store_orders
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- Transisi status yang diizinkan (dijaga juga di level database):
---   awaiting_payment -> processing | cancelled
---   processing       -> shipped    | cancelled
---   shipped          -> completed
---   completed, cancelled = final
 CREATE FUNCTION enforce_store_order_transition() RETURNS trigger AS $$
 BEGIN
   IF NEW.fulfillment_status = OLD.fulfillment_status THEN
@@ -283,8 +260,8 @@ CREATE TABLE order_items (
   id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   store_order_id  BIGINT NOT NULL REFERENCES store_orders(id) ON DELETE CASCADE,
   product_id      BIGINT REFERENCES products(id) ON DELETE SET NULL,
-  product_name    VARCHAR(150)  NOT NULL,              -- snapshot nama produk
-  unit_price      NUMERIC(12,2) NOT NULL,              -- harga saat pembelian
+  product_name    VARCHAR(150)  NOT NULL,
+  unit_price      NUMERIC(12,2) NOT NULL,
   quantity        INTEGER       NOT NULL,
   created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
   CONSTRAINT chk_item_price_positive CHECK (unit_price > 0),
@@ -293,7 +270,6 @@ CREATE TABLE order_items (
 CREATE INDEX idx_order_items_store_order ON order_items (store_order_id);
 CREATE INDEX idx_order_items_product     ON order_items (product_id);
 
--- Total per order dihitung dari item, bukan disimpan sebagai sumber kebenaran.
 CREATE VIEW v_order_totals AS
 SELECT o.id AS order_id,
        SUM(oi.unit_price * oi.quantity) AS total_amount
@@ -304,9 +280,6 @@ GROUP BY o.id;
 
 -- =====================================================================
 -- 9. reviews
--- Satu ulasan per order item. product_id & buyer_id adalah data turunan:
--- JANGAN diambil dari input client; gunakan INSERT ... SELECT (contoh di
--- bagian bawah). Trigger di bawah menjadi pengaman terakhir di database.
 -- =====================================================================
 CREATE TABLE reviews (
   id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -344,24 +317,17 @@ CREATE TRIGGER trg_reviews_eligibility
   FOR EACH ROW EXECUTE FUNCTION enforce_review_eligibility();
 
 -- =====================================================================
--- CONTOH QUERY (untuk repository layer, bukan dijalankan di sini)
+-- 10. notifications
 -- =====================================================================
--- Insert review yang aman ($1 order_item_id, $2 rating, $3 comment, $4 buyer id dari sesi):
---   INSERT INTO reviews (product_id, buyer_id, order_item_id, rating, comment)
---   SELECT oi.product_id, o.buyer_id, oi.id, $2, $3
---   FROM order_items oi
---   JOIN store_orders so ON so.id = oi.store_order_id
---   JOIN orders o        ON o.id  = so.order_id
---   WHERE oi.id = $1 AND o.buyer_id = $4
---     AND so.fulfillment_status = 'completed'
---     AND oi.product_id IS NOT NULL
---   RETURNING id;
---
--- Cegah overselling saat checkout (dalam transaksi):
---   UPDATE products SET stock = stock - $2
---   WHERE id = $1 AND is_active AND stock >= $2
---   RETURNING price, name, seller_id;   -- 0 baris = stok tidak cukup -> ROLLBACK
---
--- Status induk order (turunan) dan rating rata-rata:
---   SELECT product_id, ROUND(AVG(rating),1) AS avg_rating, COUNT(*) AS total
---   FROM reviews GROUP BY product_id;
+CREATE TABLE notifications (
+  id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title      VARCHAR(150) NOT NULL,
+  message    TEXT NOT NULL,
+  type       VARCHAR(30) NOT NULL DEFAULT 'info',
+  is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_notifications_user_read
+  ON notifications (user_id, is_read, created_at DESC);
